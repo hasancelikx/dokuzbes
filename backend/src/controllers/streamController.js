@@ -12,7 +12,8 @@ exports.startStream = async (req, res) => {
     const { title, description, category } = req.body;
     const creatorId = req.user.id;
 
-    // Check if user is creator
+    console.log('🚀 Stream start requested by:', creatorId);
+
     const userQuery = 'SELECT is_creator FROM users WHERE id = $1';
     const userResult = await pool.query(userQuery, [creatorId]);
     const user = userResult.rows[0];
@@ -21,11 +22,9 @@ exports.startStream = async (req, res) => {
       return sendError(res, 'Only creators can start streams', STATUS_CODES.FORBIDDEN);
     }
 
-    // Generate unique channel name
     const channelName = `stream_${creatorId}_${Date.now()}`;
     const agoraToken = AgoraService.generateToken(channelName, creatorId);
 
-    // Create stream record
     const streamQuery = `
       INSERT INTO live_streams (creator_id, channel_name, title, description, category, agora_token, agora_channel_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -69,6 +68,8 @@ exports.getStream = async (req, res) => {
   try {
     const { streamId } = req.params;
 
+    console.log('📺 Stream fetched:', streamId);
+
     const query = `
       SELECT 
         s.id,
@@ -97,8 +98,6 @@ exports.getStream = async (req, res) => {
     }
 
     const stream = result.rows[0];
-
-    // Generate viewer token
     const viewerToken = AgoraService.generateViewerToken(stream.agora_channel_id, req.user.id);
 
     sendSuccess(res, {
@@ -152,6 +151,8 @@ exports.endStream = async (req, res) => {
   try {
     const { streamId } = req.params;
     const creatorId = req.user.id;
+
+    console.log('🛑 Stream ending request:', streamId);
 
     const query = `
       UPDATE live_streams
