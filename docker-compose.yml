@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dokuzbes_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-dokuzbes_db}
+      POSTGRES_USER: ${DB_USER:-dokuzbes}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - dokuzbes_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dokuzbes}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dokuzbes_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - dokuzbes_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Node.js Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dokuzbes_backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dokuzbes_db}
+      DB_USER: ${DB_USER:-dokuzbes}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+    networks:
+      - dokuzbes_network
+    command: npm run dev
+
+volumes:
+  postgres_data:
+
+networks:
+  dokuzbes_network:
+    driver: bridge
