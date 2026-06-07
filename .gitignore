@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+
+# Build outputs
+dist
+.next
+out
+build
+*.tsbuildinfo
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+*.pem
+
+# Turbo
+.turbo
+
+# Prisma
+prisma/migrations/*.sql.bak
+
+# IDE
+.vscode
+.idea
+
+# Next.js
+next-env.d.ts

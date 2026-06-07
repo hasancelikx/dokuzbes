@@ -1,0 +1,16 @@
+{
+  "name": "@dokuzbes/auth-middleware",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@dokuzbes/errors": "*",
+    "jsonwebtoken": "^9.0.2",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

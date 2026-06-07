@@ -1,0 +1,283 @@
+@import "tailwindcss";
+
+@theme {
+  /* Ana Renkler */
+  --color-db-altin:         #C9A84C;
+  --color-db-altin-koyu:    #A8872E;
+  --color-db-bordo:         #8B1A2A;
+  --color-db-bordo-koyu:    #5C0F1A;
+  --color-db-amber:         #D4891A;
+
+  /* Arka Planlar */
+  --color-db-arkaplan:      #0A0A0A;
+  --color-db-yuzey:         #111111;
+  --color-db-yuzey-2:       #1A1A1A;
+  --color-db-yuzey-3:       #242424;
+
+  /* Metin */
+  --color-db-metin:         #F0EDE8;
+  --color-db-metin-2:       #A09080;
+  --color-db-metin-soluk:   #5A5050;
+
+  /* Durum */
+  --color-db-online:        #4CAF50;
+  --color-db-uyari:         #FF9800;
+  --color-db-hata:          #F44336;
+  --color-db-molada:        #9C27B0;
+  --color-db-offline:       #616161;
+
+  /* Fontlar */
+  --font-serif: 'Cormorant Garamond', 'Georgia', serif;
+  --font-sans:  'Inter', -apple-system, sans-serif;
+}
+
+:root {
+  /* Spacing */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  12px;
+  --space-lg:  16px;
+  --space-xl:  24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
+  /* Border radius */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-full: 9999px;
+
+  /* Altın soluk */
+  --db-altin-soluk: rgba(201, 168, 76, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #0A0A0A;
+  color: #F0EDE8;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #0A0A0A;
+  color: #F0EDE8;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Tipografi ────────────────────── */
+.db-baslik-1  { font-family: var(--font-serif); font-size: 32px; font-weight: 700; line-height: 1.2; letter-spacing: 0.06em; }
+.db-baslik-2  { font-family: var(--font-serif); font-size: 24px; font-weight: 700; line-height: 1.3; letter-spacing: 0.04em; }
+.db-baslik-3  { font-family: var(--font-serif); font-size: 20px; font-weight: 600; line-height: 1.4; }
+.db-govde     { font-family: var(--font-sans);  font-size: 16px; font-weight: 400; line-height: 1.6; }
+.db-govde-kck { font-family: var(--font-sans);  font-size: 14px; font-weight: 400; line-height: 1.5; }
+.db-etiket    { font-family: var(--font-sans);  font-size: 11px; font-weight: 600; line-height: 1.4; letter-spacing: 0.08em; text-transform: uppercase; }
+.db-kucuk     { font-family: var(--font-sans);  font-size: 12px; font-weight: 400; line-height: 1.4; }
+.db-sayi      { font-family: var(--font-serif); font-size: 22px; font-weight: 700; line-height: 1.1; letter-spacing: 0.02em; }
+
+/* ── Animasyonlar ─────────────────── */
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1.0);  opacity: 1.0; }
+  50%       { transform: scale(1.02); opacity: 0.92; }
+}
+
+@keyframes curtainLeft {
+  0%, 100% { transform: skewY(-1deg) translateX(0); }
+  50%       { transform: skewY(-2.5deg) translateX(-4px); }
+}
+
+@keyframes curtainRight {
+  0%, 100% { transform: skewY(1deg) translateX(0); }
+  50%       { transform: skewY(2.5deg) translateX(4px); }
+}
+
+@keyframes goldShimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes marqueeKay {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Canlı kart kenarı — nabız gibi */
+@keyframes pulseBorder {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.0), 0 0 0 0 rgba(139,26,42,0.0); }
+  50%       { box-shadow: 0 0 0 2px rgba(255,68,68,0.35), 0 0 12px 2px rgba(139,26,42,0.25); }
+}
+
+/* Gold parlama — kart kenarı */
+@keyframes goldBorderPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.0); }
+  50%       { box-shadow: 0 0 0 2px rgba(201,168,76,0.4), 0 0 16px 4px rgba(201,168,76,0.1); }
+}
+
+/* Sayı pop */
+@keyframes numberPop {
+  0%   { transform: scale(1);    }
+  40%  { transform: scale(1.15); }
+  100% { transform: scale(1);    }
+}
+
+/* Hediye — yükselerek kaybol */
+@keyframes giftFloat {
+  0%   { opacity: 1;   transform: translateY(0)    scale(1);    }
+  60%  { opacity: 0.9; transform: translateY(-60px) scale(1.1);  }
+  100% { opacity: 0;   transform: translateY(-120px) scale(0.8); }
+}
+
+/* Hediye — bounce ile çık */
+@keyframes giftBounce {
+  0%   { opacity: 0;   transform: scale(0) translateY(20px); }
+  50%  { opacity: 1;   transform: scale(1.3) translateY(-20px); }
+  70%  { transform: scale(0.9) translateY(0); }
+  85%  { transform: scale(1.05); }
+  100% { opacity: 1;   transform: scale(1) translateY(0); }
+}
+
+/* Hediye — patlama (premium) */
+@keyframes giftBurst {
+  0%   { opacity: 0; transform: scale(0); filter: brightness(3); }
+  30%  { opacity: 1; transform: scale(1.5); filter: brightness(1.5); }
+  60%  { transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0.8) translateY(-80px); }
+}
+
+/* Konfeti düşüşü */
+@keyframes konfetiDus {
+  0%   { transform: translateY(-20px) rotate(0deg)   scale(1);    opacity: 1;   }
+  80%  { opacity: 0.8; }
+  100% { transform: translateY(100vh) rotate(720deg) scale(0.5);  opacity: 0; }
+}
+
+/* Bildirim badge pulse */
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.2); }
+}
+
+/* Kayan aktivite akışı */
+@keyframes slideInFromBottom {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* VIP glow */
+@keyframes vipGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(201,168,76,0.4); }
+  50%       { text-shadow: 0 0 20px rgba(201,168,76,0.9), 0 0 40px rgba(201,168,76,0.4); }
+}
+
+.marquee-track {
+  animation: marqueeKay 28s linear infinite;
+  will-change: transform;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.logo-breath    { animation: logoPulse     6.8s ease-in-out infinite; }
+.curtain-left   { animation: curtainLeft   8.2s ease-in-out infinite; }
+.curtain-right  { animation: curtainRight  8.2s ease-in-out infinite; transform-origin: top right; }
+.fade-in-up     { animation: fadeInUp      0.5s ease-out both; }
+.fade-in-scale  { animation: fadeInScale   0.4s ease-out both; }
+.slide-in-right { animation: slideInRight  0.35s ease-out both; }
+
+.pulse-border-live { animation: pulseBorder     2.8s ease-in-out infinite; }
+.pulse-border-gold { animation: goldBorderPulse 3.5s ease-in-out infinite; }
+.number-pop        { animation: numberPop       0.3s ease-out; }
+.badge-pulse       { animation: badgePulse      1.5s ease-in-out infinite; }
+.vip-glow          { animation: vipGlow         2.5s ease-in-out infinite; }
+
+.gift-float  { animation: giftFloat  2s ease-out forwards; }
+.gift-bounce { animation: giftBounce 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.gift-burst  { animation: giftBurst  1.2s ease-out forwards; }
+
+/* Kart hover lift efekti */
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 16px rgba(201,168,76,0.08);
+}
+
+.gold-shimmer {
+  background: linear-gradient(90deg, #C9A84C 25%, #f0d070 50%, #C9A84C 75%);
+  background-size: 200% auto;
+  animation: goldShimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Stagger - her nth-child gecikmeli girer */
+.stagger-item:nth-child(1)  { animation-delay: 0.04s; }
+.stagger-item:nth-child(2)  { animation-delay: 0.08s; }
+.stagger-item:nth-child(3)  { animation-delay: 0.12s; }
+.stagger-item:nth-child(4)  { animation-delay: 0.16s; }
+.stagger-item:nth-child(5)  { animation-delay: 0.20s; }
+.stagger-item:nth-child(6)  { animation-delay: 0.24s; }
+.stagger-item:nth-child(7)  { animation-delay: 0.28s; }
+.stagger-item:nth-child(8)  { animation-delay: 0.32s; }
+.stagger-item:nth-child(n+9){ animation-delay: 0.36s; }
+
+/* ── Yardımcı keyframe'ler ───────── */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Sayfa girişi ─────────────────── */
+.page-enter { animation: fadeInUp 0.35s ease-out both; }
+
+/* ── Yüzey derinliği ──────────────── */
+.surface-1 { background-color: #0f0f18; }
+.surface-2 { background-color: #12121e; }
+.surface-3 { background-color: #1a1a28; }
+
+/* ── Gold glow ────────────────────── */
+.gold-glow-sm { box-shadow: 0 0 16px rgba(201,168,76,0.08); }
+.gold-glow    { box-shadow: 0 0 24px rgba(201,168,76,0.12); }
+
+/* ── Press efekti ─────────────────── */
+.press-effect { transition: transform 0.1s ease; }
+.press-effect:active { transform: scale(0.97); }
+
+/* ── No scrollbar ─────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Erişilebilirlik ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Scrollbar ────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111111; }
+::-webkit-scrollbar-thumb { background: #C9A84C40; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #C9A84C80; }

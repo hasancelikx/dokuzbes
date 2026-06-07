@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String    @unique
+  passwordHash    String?   @map("password_hash")
+  googleUid       String?   @unique @map("google_uid")
+  role            String    @default("customer")
+  nickname        String?   @unique
+  city            String?
+  avatarUrl       String?   @map("avatar_url")
+  gold            Int       @default(20)
+  totalSpent      Int       @default(0) @map("total_spent")
+  totalPurchased  Int       @default(0) @map("total_purchased")
+  vipLevel        Int       @default(1) @map("vip_level")
+  status          String    @default("active")
+  shadowBanned    Boolean   @default(false) @map("shadow_banned")
+  aktifMasaId     String?   @map("aktif_masa_id") @db.Uuid
+  fcmToken        String?   @map("fcm_token")
+  lastSeen        DateTime? @map("last_seen") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  performer           Performer?
+  performerApplication PerformerApplication[]
+  masalarMusteri      Masa[]              @relation("MasaMusteri")
+  mesajlar            Mesaj[]
+  gorusmelerMusteri   Gorusme[]           @relation("GorusmeMusteri")
+  transactions        Transaction[]
+  processedPayments   ProcessedPayment[]
+  hediyeGonderimleri  HediyeGonderimi[]   @relation("HediyeGonderici")
+  sikayetEden         Sikayet[]           @relation("SikayetEden")
+  sikayetEdilen       Sikayet[]           @relation("SikayetEdilen")
+  bildirimler         Bildirim[]
+
+  @@map("users")
+}
+
+model Performer {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  stageName      String   @map("stage_name")
+  bio            String?
+  city           String?
+  category       String?
+  durum          String   @default("offline")
+  toplamHediye   Int      @default(0) @map("toplam_hediye")
+  toplamGorusme  Int      @default(0) @map("toplam_gorusme")
+  aktifIzleyici  Int      @default(0) @map("aktif_izleyici")
+  puan           Decimal  @default(0.00) @db.Decimal(3, 2)
+  vipSeviye      Int      @default(1) @map("vip_seviye")
+  etiketler      String[]
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  masalar           Masa[]              @relation("MasaYayinci")
+  gorusmeler        Gorusme[]           @relation("GorusmeYayinci")
+  hediyeAlimlar     HediyeGonderimi[]   @relation("HediyeAlici")
+  cekimTalepleri    CekimTalebi[]
+
+  @@index([durum])
+  @@index([puan(sort: Desc)])
+  @@map("performers")
+}
+
+model PerformerApplication {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  stageName  String    @map("stage_name")
+  bio        String?
+  city       String?
+  category   String?
+  durum      String    @default("beklemede")
+  redSebebi  String?   @map("red_sebebi")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("performer_applications")
+}
+
+model Masa {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  musteriId   String    @map("musteri_id") @db.Uuid
+  yayinciId   String    @map("yayinci_id") @db.Uuid
+  tur         String
+  goldMaliyet Int       @map("gold_maliyet")
+  durum       String    @default("waiting")
+  baslangic   DateTime  @default(now()) @db.Timestamptz
+  bitis       DateTime? @db.Timestamptz
+
+  musteri           User              @relation("MasaMusteri", fields: [musteriId], references: [id])
+  yayinci           Performer         @relation("MasaYayinci", fields: [yayinciId], references: [id])
+  mesajlar          Mesaj[]
+  hediyeGonderimleri HediyeGonderimi[]
+
+  @@index([yayinciId, durum])
+  @@map("masalar")
+}
+
+model Mesaj {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  masaId      String   @map("masa_id") @db.Uuid
+  gondericiId String   @map("gonderici_id") @db.Uuid
+  metin       String
+  okundu      Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  masa      Masa @relation(fields: [masaId], references: [id], onDelete: Cascade)
+  gonderici User @relation(fields: [gondericiId], references: [id])
+
+  @@index([masaId, createdAt])
+  @@map("mesajlar")
+}
+
+model Gorusme {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  musteriId    String    @map("musteri_id") @db.Uuid
+  yayinciId    String    @map("yayinci_id") @db.Uuid
+  tur          String
+  durum        String    @default("aktif")
+  channelName  String    @unique @map("channel_name")
+  baslangic    DateTime  @default(now()) @db.Timestamptz
+  bitis        DateTime? @db.Timestamptz
+  toplamDakika Int       @default(0) @map("toplam_dakika")
+
+  musteri  User      @relation("GorusmeMusteri", fields: [musteriId], references: [id])
+  yayinci  Performer @relation("GorusmeYayinci", fields: [yayinciId], references: [id])
+
+  @@index([durum])
+  @@map("gorusmeler")
+}
+
+model Transaction {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tur       String
+  miktar    Int
+  aciklama  String?
+  iyzicoId  String?  @map("iyzico_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("transactions")
+}
+
+model ProcessedPayment {
+  paymentId   String   @id @map("payment_id")
+  userId      String   @map("user_id") @db.Uuid
+  paketId     String   @map("paket_id")
+  goldEklendi Int      @map("gold_eklendi")
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("processed_payments")
+}
+
+model HediyeKatalog {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  isim        String
+  ikon        String
+  goldMaliyet Int     @map("gold_maliyet")
+  animasyon   String?
+  kategori    String?
+  aktif       Boolean @default(true)
+
+  gonderimleri HediyeGonderimi[]
+
+  @@map("hediyeler_katalog")
+}
+
+model HediyeGonderimi {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gondericiId String   @map("gonderici_id") @db.Uuid
+  aliciId     String   @map("alici_id") @db.Uuid
+  hediyeId    String   @map("hediye_id") @db.Uuid
+  masaId      String   @map("masa_id") @db.Uuid
+  goldMaliyet Int      @map("gold_maliyet")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  gonderici User          @relation("HediyeGonderici", fields: [gondericiId], references: [id])
+  alici     Performer     @relation("HediyeAlici", fields: [aliciId], references: [id])
+  hediye    HediyeKatalog @relation(fields: [hediyeId], references: [id])
+  masa      Masa          @relation(fields: [masaId], references: [id])
+
+  @@index([aliciId, createdAt(sort: Desc)])
+  @@map("hediye_gonderimleri")
+}
+
+model CekimTalebi {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  performerId String    @map("performer_id") @db.Uuid
+  goldMiktar  Int       @map("gold_miktar")
+  tlMiktar    Decimal   @map("tl_miktar") @db.Decimal(10, 2)
+  iban        String
+  durum       String    @default("beklemede")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  processedAt DateTime? @map("processed_at") @db.Timestamptz
+
+  performer Performer @relation(fields: [performerId], references: [id])
+
+  @@map("cekim_talepleri")
+}
+
+model Sikayet {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sikayetEdenId  String   @map("sikayet_eden") @db.Uuid
+  sikayetEdilenId String  @map("sikayet_edilen") @db.Uuid
+  sebep          String?
+  durum          String   @default("acik")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  sikayetEden    User @relation("SikayetEden", fields: [sikayetEdenId], references: [id])
+  sikayetEdilen  User @relation("SikayetEdilen", fields: [sikayetEdilenId], references: [id])
+
+  @@map("sikayetler")
+}
+
+model Ayar {
+  anahtar   String   @id
+  deger     String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("ayarlar")
+}
+
+model Bildirim {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tip       String
+  baslik    String
+  metin     String
+  veri      Json?
+  okundu    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("bildirimler")
+}

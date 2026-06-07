@@ -1,0 +1,415 @@
+'use client'
+
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import {
+  LiveKitRoom,
+  VideoConference,
+  RoomAudioRenderer,
+  useLocalParticipant,
+  useParticipants,
+} from '@livekit/components-react'
+import '@livekit/components-styles'
+import { api, ApiError } from '@/lib/apiClient'
+import { useAuthStore } from '@/store/authStore'
+import {
+  Mic, MicOff, Video, VideoOff, PhoneOff,
+  Send, Gift, ChevronDown, Coins, Clock,
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+/* ─── Tipler ─────────────────────────────────────── */
+interface MasaToken {
+  token: string; odaAdi: string; livekitUrl: string
+  rol: 'yayinci' | 'musteri'
+  masa: { id: string; tur: string; durum: string; performerAdi: string; musteriAdi: string | null }
+}
+interface ChatMesaj {
+  id: string; metin: string; createdAt: string
+  gonderici: { id: string; nickname: string | null; avatarUrl: string | null }
+}
+interface HediyeItem { id: string; isim: string; ikon: string; goldMaliyet: number }
+
+const MASA_TUR_SURE: Record<string, number> = { kisa: 15, uzun: 45, ozel: 60 }
+const CHAT_WS = process.env.NEXT_PUBLIC_CHAT_URL ?? 'ws://localhost:3005'
+
+/* ─── Hediye Drawer ──────────────────────────────── */
+function HediyeDrawer({
+  masaId, performerId, onKapat,
+}: { masaId: string; performerId?: string; onKapat: () => void }) {
+  const [hediyeler, setHediyeler] = useState<HediyeItem[]>([])
+  const [gonderiliyor, setGonderiliyor] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.gold.get<{ hediyeler: HediyeItem[] }>('/gold/hediye-katalog')
+      .then(d => setHediyeler(d.hediyeler))
+      .catch(() => {})
+  }, [])
+
+  async function gonder(hediye: HediyeItem) {
+    if (!performerId) return
+    setGonderiliyor(hediye.id)
+    try {
+      await api.gold.post('/gold/hediye-gonder', { hediyeId: hediye.id, masaId, performerId })
+      toast.success(`${hediye.isim} gönderildi!`)
+      onKapat()
+    } catch (e) {
+      const code = (e as any)?.code
+      if (code === 'YETERSIZ_GOLD') toast.error('Yetersiz gold.')
+      else toast.error('Hediye gönderilemedi.')
+    } finally {
+      setGonderiliyor(null)
+    }
+  }
+
+  return (
+    <div className="absolute bottom-20 left-0 right-0 bg-[#12121a]/95 backdrop-blur border-t border-white/10 rounded-t-2xl p-4 z-20">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-white font-semibold">Hediye Gönder</span>
+        <button onClick={onKapat} className="text-gray-400 hover:text-white">
+          <ChevronDown size={20} />
+        </button>
+      </div>
+      {hediyeler.length === 0 ? (
+        <p className="text-center text-gray-500 py-4 text-sm">Yükleniyor...</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2">
+          {hediyeler.map(h => (
+            <button
+              key={h.id}
+              onClick={() => gonder(h)}
+              disabled={gonderiliyor === h.id}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 hover:bg-[rgba(201,168,76,0.12)] border border-white/5 hover:border-[rgba(201,168,76,0.3)] transition-all disabled:opacity-50"
+            >
+              <span className="text-2xl">{h.ikon}</span>
+              <span className="text-[10px] text-gray-400">{h.isim}</span>
+              <span className="text-[10px] text-[#C9A84C] font-semibold flex items-center gap-0.5">
+                <Coins size={9} />{h.goldMaliyet}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Chat Paneli ────────────────────────────────── */
+function ChatPanel({
+  masaId, mevcutUserId, ws,
+}: { masaId: string; mevcutUserId: string; ws: WebSocket | null }) {
+  const [mesajlar, setMesajlar] = useState<ChatMesaj[]>([])
+  const [metin, setMetin] = useState('')
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Geçmişi yükle
+  useEffect(() => {
+    api.notif.get  // reuse apiFetch pattern
+    fetch(`http://localhost:3005/chat/gecmis/${masaId}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.mesajlar) setMesajlar(d.mesajlar) })
+      .catch(() => {})
+  }, [masaId])
+
+  // WS mesajları
+  useEffect(() => {
+    if (!ws) return
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.tip === 'mesaj') {
+          setMesajlar(prev => [...prev, data.mesaj])
+        }
+      } catch {}
+    }
+    ws.addEventListener('message', handler)
+    return () => ws.removeEventListener('message', handler)
+  }, [ws])
+
+  // Auto-scroll
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+  }, [mesajlar])
+
+  function gonder(e: React.FormEvent) {
+    e.preventDefault()
+    if (!metin.trim() || !ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ tip: 'mesaj', masaId, metin: metin.trim() }))
+    setMetin('')
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Mesaj listesi */}
+      <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0">
+        {mesajlar.length === 0 && (
+          <p className="text-center text-gray-600 text-xs py-6">Henüz mesaj yok</p>
+        )}
+        {mesajlar.map(m => {
+          const benim = m.gonderici.id === mevcutUserId
+          return (
+            <div key={m.id} className={`flex gap-2 ${benim ? 'flex-row-reverse' : ''}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                benim ? 'bg-[rgba(201,168,76,0.2)] text-[#C9A84C]' : 'bg-white/10 text-gray-300'
+              }`}>
+                {(m.gonderici.nickname ?? '?').slice(0, 1).toUpperCase()}
+              </div>
+              <div className={`max-w-[75%] ${benim ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
+                <span className="text-[10px] text-gray-500">
+                  {m.gonderici.nickname ?? 'Misafir'}
+                </span>
+                <div className={`px-3 py-1.5 rounded-2xl text-sm leading-snug ${
+                  benim
+                    ? 'bg-[rgba(201,168,76,0.15)] text-white rounded-tr-sm'
+                    : 'bg-white/8 text-gray-200 rounded-tl-sm'
+                }`}>
+                  {m.metin}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Giriş alanı */}
+      <form onSubmit={gonder} className="flex gap-2 px-3 py-3 border-t border-white/8">
+        <input
+          type="text"
+          value={metin}
+          onChange={e => setMetin(e.target.value)}
+          placeholder="Mesaj yaz..."
+          maxLength={200}
+          className="flex-1 bg-white/8 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[rgba(201,168,76,0.4)] min-w-0"
+        />
+        <button
+          type="submit"
+          disabled={!metin.trim()}
+          className="w-9 h-9 rounded-xl bg-[rgba(201,168,76,0.15)] text-[#C9A84C] flex items-center justify-center hover:bg-[rgba(201,168,76,0.25)] disabled:opacity-30 transition-colors shrink-0"
+        >
+          <Send size={15} />
+        </button>
+      </form>
+    </div>
+  )
+}
+
+/* ─── Kontrol Çubuğu ─────────────────────────────── */
+function KontrolCubugu({
+  masayiKapat, hediyeAc, sure,
+}: { masayiKapat: () => void; hediyeAc: () => void; sure: string }) {
+  const { localParticipant } = useLocalParticipant()
+  const [sesli, setSesli] = useState(true)
+  const [goruntulu, setGoruntulu] = useState(true)
+  const [kapatiliyor, setKapatiliyor] = useState(false)
+
+  async function sesToggle() {
+    const yeni = !sesli
+    await localParticipant.setMicrophoneEnabled(yeni)
+    setSesli(yeni)
+  }
+  async function videoToggle() {
+    const yeni = !goruntulu
+    await localParticipant.setCameraEnabled(yeni)
+    setGoruntulu(yeni)
+  }
+  async function kapat() {
+    setKapatiliyor(true)
+    masayiKapat()
+  }
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 bg-[#0d0d14] border-t border-white/8 shrink-0">
+      {/* Süre */}
+      <div className="flex items-center gap-1.5 text-gray-500 text-xs w-24">
+        <Clock size={12} />
+        <span className="font-mono">{sure}</span>
+      </div>
+
+      {/* Butonlar */}
+      <div className="flex items-center gap-3">
+        <button onClick={sesToggle}
+          className={`p-3 rounded-full transition-colors ${sesli
+            ? 'bg-white/10 hover:bg-white/15 text-white'
+            : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}>
+          {sesli ? <Mic size={18} /> : <MicOff size={18} />}
+        </button>
+        <button onClick={videoToggle}
+          className={`p-3 rounded-full transition-colors ${goruntulu
+            ? 'bg-white/10 hover:bg-white/15 text-white'
+            : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}>
+          {goruntulu ? <Video size={18} /> : <VideoOff size={18} />}
+        </button>
+        <button onClick={kapat} disabled={kapatiliyor}
+          className="p-3 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50 scale-110">
+          <PhoneOff size={18} />
+        </button>
+      </div>
+
+      {/* Hediye */}
+      <div className="flex justify-end w-24">
+        <button onClick={hediyeAc}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[rgba(201,168,76,0.12)] text-[#C9A84C] text-xs font-medium hover:bg-[rgba(201,168,76,0.2)] transition-colors">
+          <Gift size={14} />
+          Hediye
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Ana Sayfa ──────────────────────────────────── */
+export default function MasaSayfasi() {
+  const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+  const { kullanici } = useAuthStore()
+  const [masaToken, setMasaToken] = useState<MasaToken | null>(null)
+  const [hata, setHata] = useState<string | null>(null)
+  const [ws, setWs] = useState<WebSocket | null>(null)
+  const [hediyeAcik, setHediyeAcik] = useState(false)
+  const [sure, setSure] = useState('00:00')
+  const baslangicRef = useRef<Date | null>(null)
+
+  // Sayaç
+  useEffect(() => {
+    baslangicRef.current = new Date()
+    const t = setInterval(() => {
+      if (!baslangicRef.current) return
+      const s = Math.floor((Date.now() - baslangicRef.current.getTime()) / 1000)
+      const dk = String(Math.floor(s / 60)).padStart(2, '0')
+      const sn = String(s % 60).padStart(2, '0')
+      setSure(`${dk}:${sn}`)
+    }, 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Token al
+  useEffect(() => {
+    if (!kullanici) { router.replace('/giris'); return }
+    api.livekit.post<MasaToken>('/livekit/token', { masaId: id, goruntulu: true, sesli: true })
+      .then(t => {
+        setMasaToken(t)
+        // WebSocket bağlan
+        const socket = new WebSocket(`${CHAT_WS}/chat`)
+        socket.onopen = () => setWs(socket)
+        socket.onerror = () => {}
+      })
+      .catch(e => {
+        if (e instanceof ApiError && e.status === 410) setHata('Bu masa kapanmış.')
+        else if (e instanceof ApiError && e.status === 403) setHata('Bu masaya erişim yetkiniz yok.')
+        else setHata('Bağlantı kurulamadı.')
+      })
+    return () => { ws?.close() }
+  }, [id, kullanici]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function masayiKapat() {
+    ws?.close()
+    try { await api.mesa.post(`/mesa/${id}/kapat`) } catch {}
+    router.back()
+  }
+
+  /* ── Hata / Yükleme ── */
+  if (hata) return (
+    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <p className="text-red-400">{hata}</p>
+        <button onClick={() => router.back()}
+          className="px-6 py-3 bg-white/10 rounded-xl text-white hover:bg-white/15 transition-colors">
+          Geri Dön
+        </button>
+      </div>
+    </div>
+  )
+
+  if (!masaToken) return (
+    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="w-14 h-14 rounded-full border-[3px] border-[#C9A84C] border-t-transparent animate-spin mx-auto" />
+        <p className="text-gray-500 text-sm">Bağlantı kuruluyor...</p>
+      </div>
+    </div>
+  )
+
+  const karsiTaraf = masaToken.rol === 'musteri'
+    ? masaToken.masa.performerAdi
+    : (masaToken.masa.musteriAdi ?? 'Müşteri')
+
+  return (
+    <div className="h-screen bg-[#080810] flex flex-col overflow-hidden">
+
+      {/* ── Üst Bar ── */}
+      <div className="flex items-center justify-between px-4 py-3 bg-[#0d0d14] border-b border-white/8 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[rgba(201,168,76,0.15)] border border-[rgba(201,168,76,0.2)] flex items-center justify-center text-sm font-semibold text-[#C9A84C]">
+            {karsiTaraf.slice(0,1)}
+          </div>
+          <div>
+            <p className="text-white text-sm font-medium leading-tight">{karsiTaraf}</p>
+            <p className="text-gray-500 text-[10px] capitalize">{masaToken.masa.tur} masa</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1 text-xs text-[#C9A84C] bg-[rgba(201,168,76,0.08)] px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] animate-pulse" />
+            Canlı
+          </span>
+        </div>
+      </div>
+
+      {/* ── İçerik: Video + Chat ── */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* Video (sol / üst) */}
+        <div className="relative flex-1 bg-black min-w-0">
+          <LiveKitRoom
+            serverUrl={masaToken.livekitUrl}
+            token={masaToken.token}
+            connect
+            video audio
+            onDisconnected={masayiKapat}
+            style={{ height: '100%' }}
+          >
+            <VideoConference />
+            <RoomAudioRenderer />
+            <WaitingOverlay />
+            <KontrolCubugu
+              masayiKapat={masayiKapat}
+              hediyeAc={() => setHediyeAcik(p => !p)}
+              sure={sure}
+            />
+            {hediyeAcik && (
+              <HediyeDrawer
+                masaId={id}
+                performerId={masaToken.rol === 'musteri' ? undefined : undefined}
+                onKapat={() => setHediyeAcik(false)}
+              />
+            )}
+          </LiveKitRoom>
+        </div>
+
+        {/* Chat (sağ) — sadece desktop */}
+        <div className="hidden lg:flex flex-col w-72 border-l border-white/8 bg-[#0d0d14]">
+          {/* Chat başlık */}
+          <div className="px-4 py-3 border-b border-white/8 shrink-0">
+            <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">Sohbet</p>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ChatPanel masaId={id} mevcutUserId={kullanici?.id ?? ''} ws={ws} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function WaitingOverlay() {
+  const participants = useParticipants()
+  if (participants.length >= 2) return null
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-black/60 pointer-events-none z-10">
+      <div className="text-center">
+        <div className="w-10 h-10 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-400 text-sm">Karşı taraf bekleniyor...</p>
+      </div>
+    </div>
+  )
+}
