@@ -24,7 +24,14 @@ export async function tokenDogrula(req: FastifyRequest, reply: FastifyReply) {
   const karalistede = await redis.get(`blacklist:${token}`)
   if (karalistede) throw new AppError('TOKEN_GECERSIZ', 401)
 
-  const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as JwtPayload
+  let payload: JwtPayload
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as JwtPayload
+  } catch (err) {
+    // Süresi dolmuş / imzası bozuk access token → 401 (client refresh tetikler)
+    if (err instanceof jwt.TokenExpiredError) throw new AppError('TOKEN_SURESI_DOLDU', 401)
+    throw new AppError('TOKEN_GECERSIZ', 401)
+  }
   req.kullanici = payload
 }
 

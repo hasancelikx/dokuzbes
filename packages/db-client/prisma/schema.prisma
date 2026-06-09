@@ -23,7 +23,7 @@ model User {
   status          String    @default("active")
   shadowBanned    Boolean   @default(false) @map("shadow_banned")
   aktifMasaId     String?   @map("aktif_masa_id") @db.Uuid
-  fcmToken        String?   @map("fcm_token")
+  pushSubscription String?  @map("push_subscription")
   lastSeen        DateTime? @map("last_seen") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 

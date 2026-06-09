@@ -11,7 +11,17 @@ import { useAuth } from '@/hooks/useAuth'
 import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
 import { profilGuncelle, nicknameKontrol } from '@/services/kullaniciService'
 import { useAuthStore } from '@/store/authStore'
+import { api, ApiError } from '@/lib/apiClient'
 import Link from 'next/link'
+
+const AVATAR_TIPLER = ['image/jpeg', 'image/png', 'image/webp']
+const AVATAR_MAX = 2 * 1024 * 1024 // 2MB
+
+const AVATAR_HATA: Record<string, string> = {
+  GECERSIZ_DOSYA_TIPI: 'Sadece JPG, PNG veya WEBP yükleyebilirsin.',
+  DOSYA_COK_BUYUK:     'Dosya 2MB sınırını aşıyor.',
+  DOSYA_YOK:           'Dosya seçilmedi.',
+}
 
 export default function ProfilDuzenle() {
   const router = useRouter()
@@ -23,6 +33,7 @@ export default function ProfilDuzenle() {
   const [city, setCity]         = useState(kullanici?.city ?? '')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [nicknameHata, setNicknameHata] = useState('')
+  const [avatarYukleniyor, setAvatarYukleniyor] = useState(false)
 
   if (yukleniyor) {
     return (
@@ -70,6 +81,36 @@ export default function ProfilDuzenle() {
     }
   }
 
+  async function handleAvatarSec(e: React.ChangeEvent<HTMLInputElement>) {
+    const dosya = e.target.files?.[0]
+    e.target.value = '' // aynı dosya tekrar seçilebilsin
+    if (!dosya || !kullanici) return
+
+    if (!AVATAR_TIPLER.includes(dosya.type)) {
+      toast.error(AVATAR_HATA.GECERSIZ_DOSYA_TIPI)
+      return
+    }
+    if (dosya.size > AVATAR_MAX) {
+      toast.error(AVATAR_HATA.DOSYA_COK_BUYUK)
+      return
+    }
+
+    const form = new FormData()
+    form.append('avatar', dosya)
+
+    setAvatarYukleniyor(true)
+    try {
+      const { avatarUrl } = await api.user.upload<{ avatarUrl: string }>('/users/me/avatar', form)
+      setKullanici({ ...kullanici, avatarUrl })
+      toast.success('Profil fotoğrafın güncellendi.')
+    } catch (err) {
+      const kod = err instanceof ApiError ? err.code : ''
+      toast.error(AVATAR_HATA[kod] ?? 'Yükleme başarısız. Tekrar deneyin.')
+    } finally {
+      setAvatarYukleniyor(false)
+    }
+  }
+
   return (
     <div className="max-w-[600px] mx-auto px-4 py-8 flex flex-col gap-6">
 
@@ -92,16 +133,22 @@ export default function ProfilDuzenle() {
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center shadow-lg hover:bg-[#E0C070] transition-colors"
+            disabled={avatarYukleniyor}
+            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center shadow-lg hover:bg-[#E0C070] transition-colors disabled:opacity-60"
           >
             <Camera size={14} className="text-[#0A0A0A]" />
           </button>
-          {/* Avatar yükleme — Firebase Storage açılınca aktive edilecek */}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={() => {
-            toast.info('Avatar yükleme yakında aktif olacak.')
-          }} />
+          {/* Yükleme sırasında avatar üstünde spinner */}
+          {avatarYukleniyor && (
+            <div className="absolute inset-0 rounded-full bg-black/55 flex items-center justify-center">
+              <DBLoadingSpinner size={24} />
+            </div>
+          )}
+          {/* Avatar yükleme — MinIO/S3 (user-service: POST /users/me/avatar) */}
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp"
+            className="hidden" onChange={handleAvatarSec} />
         </div>
-        <p className="db-kucuk text-[#5A5050]">Fotoğrafını değiştirmek için tıkla</p>
+        <p className="db-kucuk text-[#5A5050]">JPG, PNG veya WEBP · en fazla 2MB</p>
       </div>
 
       {/* Form */}

@@ -1,333 +1,393 @@
 'use client'
 
-import Image from 'next/image'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { Heart, MessageCircle, Share2, Users, Play, Clock, Coins } from 'lucide-react'
-import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
-import { DBButton } from '@/components/ui/DBButton'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Heart, MessageCircle, Gift, MapPin, Star, ChevronUp, Compass } from 'lucide-react'
 import { useSalon } from '@/hooks/useSalon'
+import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
 import { useAuth } from '@/hooks/useAuth'
 import type { Yayinci } from '@/types/yayinci'
-import { useState } from 'react'
+import { PA } from '@/lib/mockAvatars'
 
-const ONLINE: Yayinci['durum'][] = ['online', 'musait', 'mesgul', 'molada']
-const MUSAIT: Yayinci['durum'][] = ['musait', 'online']
-
-type PostTip = 'fotograf' | 'metin' | 'canli' | 'video'
-
-interface Post {
-  id: string
-  yayinciId: string
-  tip: PostTip
-  icerik: string
-  begeni: number
-  yorum: number
-  zaman: string
-  etiketler?: string[]
-}
-
-const POSTS: Post[] = [
-  { id: 'p1', yayinciId: '0', tip: 'canli',   icerik: 'Yayına başladı! Gece boyunca sizinle 🎵',           begeni: 234,  yorum: 47,  zaman: 'Az önce',    etiketler: ['müzik','sohbet'] },
-  { id: 'p2', yayinciId: '1', tip: 'fotograf', icerik: 'Bugün akşam için hazır mısınız? 🌙✨',              begeni: 891,  yorum: 123, zaman: '2 sa önce',  etiketler: ['gece','moda'] },
-  { id: 'p3', yayinciId: '2', tip: 'metin',    icerik: 'Bu gece özel bir sürprizim var sizin için. Tam gece yarısı buluşuyoruz 🌹 Beni bekliyormuşsunuz gibi hissettiriyor. Teşekkürler 💛', begeni: 445, yorum: 89, zaman: '4 sa önce' },
-  { id: 'p4', yayinciId: '3', tip: 'fotograf', icerik: 'Kahvemi içerken sizinle sohbet etmek istiyorum ☕', begeni: 312,  yorum: 56,  zaman: '6 sa önce',  etiketler: ['sohbet'] },
-  { id: 'p5', yayinciId: '4', tip: 'canli',    icerik: 'Dans gecesi başladı! Kim hazır? 💃',               begeni: 678,  yorum: 94,  zaman: '8 sa önce',  etiketler: ['dans','eğlence'] },
-  { id: 'p6', yayinciId: '5', tip: 'video',    icerik: 'Dünkü yayından özel anlar 🎬',                    begeni: 1203, yorum: 178, zaman: '1 gün önce', etiketler: ['highlights'] },
+const MOCK: Yayinci[] = [
+  { id: 'mock-1', displayName: 'Leyla',      avatarUrl: PA['Leyla'],      city: 'İstanbul', durum: 'musait', aktifIzleyici: 0,  toplamGorusme: 342,  toplamHediye: 1290, puan: 4.8, vipSeviye: 2, etiketler: ['sohbet', 'müzik']         },
+  { id: 'mock-2', displayName: 'Ece Yıldız', avatarUrl: PA['Ece Yıldız'], city: 'Ankara',   durum: 'online', aktifIzleyici: 47, toplamGorusme: 891,  toplamHediye: 3401, puan: 4.9, vipSeviye: 3, etiketler: ['dans', 'eğlence']         },
+  { id: 'mock-3', displayName: 'Selin',      avatarUrl: PA['Selin'],      city: 'İzmir',    durum: 'musait', aktifIzleyici: 0,  toplamGorusme: 203,  toplamHediye:  780, puan: 4.6, vipSeviye: 1, etiketler: ['müzik']                   },
+  { id: 'mock-4', displayName: 'Zeynep',     avatarUrl: PA['Zeynep'],     city: 'Bursa',    durum: 'musait', aktifIzleyici: 0,  toplamGorusme: 567,  toplamHediye: 2340, puan: 4.7, vipSeviye: 2, etiketler: ['sohbet']                  },
+  { id: 'mock-5', displayName: 'Luna',       avatarUrl: PA['Luna'],       city: 'İstanbul', durum: 'online', aktifIzleyici: 23, toplamGorusme: 1203, toplamHediye: 5670, puan: 5.0, vipSeviye: 3, etiketler: ['dans', 'eğlence', 'müzik'] },
+  { id: 'mock-6', displayName: 'Ayşe G.',    avatarUrl: PA['Ayşe G.'],   city: 'İstanbul', durum: 'musait', aktifIzleyici: 0,  toplamGorusme: 445,  toplamHediye: 1890, puan: 4.5, vipSeviye: 1, etiketler: ['sohbet']                  },
 ]
+
+// Her performer için renk paleti
+const PALETTES = [
+  { dark: '#1A0008', mid: '#6B0F1A', accent: '#C9A84C' },
+  { dark: '#080820', mid: '#1A1466', accent: '#8B7FE8' },
+  { dark: '#081408', mid: '#1A4D20', accent: '#66BB6A' },
+  { dark: '#160824', mid: '#4A1070', accent: '#CE93D8' },
+  { dark: '#181008', mid: '#5C3200', accent: '#FFB74D' },
+  { dark: '#041414', mid: '#005252', accent: '#4DD0E1' },
+]
+
+function palette(id: string) {
+  const n = id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
+  return PALETTES[n % PALETTES.length]
+}
 
 export default function SalonPage() {
   useAuth()
   const { yayincilar, yukleniyor } = useSalon('tumu')
+  const liste = yayincilar.length > 0 ? yayincilar : MOCK
+  const canlilar  = liste.filter(y => y.durum === 'online')
+  const musaitler = liste.filter(y => y.durum !== 'online')
+  // Canlılar önce
+  const sirali = [...canlilar, ...musaitler]
 
-  const cevrimici  = yayincilar.filter(y => ONLINE.includes(y.durum))
-  const musaitler  = yayincilar.filter(y => MUSAIT.includes(y.durum))
-  const sahne      = cevrimici.reduce<Yayinci | null>((best, y) =>
-    !best || y.aktifIzleyici > best.aktifIzleyici ? y : best, null)
+  const [begendiler, setBegendiler] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try { return new Set(JSON.parse(localStorage.getItem('salon-begen') ?? '[]')) }
+    catch { return new Set() }
+  })
+  const [aktifIdx, setAktifIdx] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const begen = useCallback((id: string) => {
+    setBegendiler(p => {
+      const n = new Set(p)
+      n.has(id) ? n.delete(id) : n.add(id)
+      try { localStorage.setItem('salon-begen', JSON.stringify([...n])) } catch {}
+      return n
+    })
+  }, [])
+
+  // Scroll'dan aktif kartı takip et
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      const idx = Math.round(el.scrollTop / el.clientHeight)
+      setAktifIdx(idx)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
 
   if (yukleniyor) {
-    return <div className="flex items-center justify-center min-h-screen bg-[#0A0A0A]"><DBLoadingSpinner size={44} /></div>
+    return (
+      <div className="flex items-center justify-center h-[calc(100dvh-68px)] md:h-screen" style={{ background: '#050508' }}>
+        <DBLoadingSpinner size={44} />
+      </div>
+    )
   }
 
-  const posts = POSTS
-    .map(p => ({ ...p, yayinci: yayincilar[parseInt(p.yayinciId) % Math.max(yayincilar.length, 1)] }))
-    .filter(p => p.yayinci)
-
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      <div className="max-w-[600px] mx-auto flex flex-col">
+    <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 68px)', background: '#050508' }}>
 
-        {/* ── BU GECE SAHNE ── */}
-        {sahne && (
-          <SahneHero yayinci={sahne} />
-        )}
-
-        {/* ── MÜSAİT MASALAR ── */}
-        {musaitler.length > 0 && (
-          <MasalarBolumu yayincilar={musaitler} />
-        )}
-
-        {/* ── CANLIYSA VE MÜSAİT TABLO YOK — STORIES ── */}
-        {cevrimici.length > 0 && musaitler.length === 0 && (
-          <div className="px-4 pt-5 pb-4 border-b border-[rgba(255,255,255,0.05)]">
-            <div className="overflow-hidden">
-              <div className="marquee-track flex gap-4 w-max">
-                {[...cevrimici, ...cevrimici].map((y, i) => (
-                  <Story key={`${y.id}-${i}`} yayinci={y} />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── SALON AKIŞI ── */}
-        <div className="flex flex-col divide-y divide-[rgba(255,255,255,0.04)]">
-          {posts.map(p => (
-            <FeedPost key={p.id} post={p} yayinci={p.yayinci} />
-          ))}
-        </div>
-
-      </div>
-    </div>
-  )
-}
-
-/* ── Bu Gece Sahne Hero ──────────────────────────── */
-function SahneHero({ yayinci }: { yayinci: Yayinci }) {
-  return (
-    <div className="relative w-full border-b border-[rgba(201,168,76,0.08)]" style={{ aspectRatio: '16/9' }}>
-      {yayinci.avatarUrl ? (
-        <Image src={yayinci.avatarUrl} alt={yayinci.displayName} fill className="object-cover object-top" sizes="600px" priority />
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1A0A10] to-[#0A0A0A]" />
-      )}
-
-      {/* Degrade overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.92)] via-[rgba(0,0,0,0.25)] to-[rgba(0,0,0,0.1)]" />
-
-      {/* Üst başlık */}
-      <div className="absolute top-4 left-4 flex items-center gap-2">
-        <span className="db-etiket text-[#C9A84C] tracking-[0.2em]">BU GECE SAHNE</span>
-      </div>
-
-      {/* CANLI badge */}
-      <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-[#8B1A2A] rounded-full px-3 py-1 pulse-border-live">
-        <span className="w-2 h-2 rounded-full bg-[#FF4444] animate-pulse" />
-        <span className="text-white text-[11px] font-bold tracking-wider">CANLI</span>
-        {yayinci.aktifIzleyici > 0 && (
-          <span className="text-white text-[11px] font-semibold">· {yayinci.aktifIzleyici}</span>
-        )}
-      </div>
-
-      {/* Alt bilgi */}
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <div className="flex items-end justify-between gap-3">
+      {/* ── Üst header — saydam, kartların üzerinde ── */}
+      <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%)', paddingBottom: 56 }}>
+        <div className="flex items-center justify-between px-5 pt-safe-top pt-5 pointer-events-auto">
           <div>
-            <h2
-              className="text-[#F0EDE8] font-bold leading-tight"
-              style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 28, textShadow: '0 2px 16px rgba(0,0,0,0.8)' }}
-            >
-              {yayinci.displayName}
-            </h2>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              {yayinci.city && (
-                <span className="db-kucuk text-[#A09080]">{yayinci.city}</span>
-              )}
-              {yayinci.etiketler?.slice(0, 2).map(e => (
-                <span key={e} className="text-[10px] text-[#C9A84C] font-medium bg-[rgba(201,168,76,0.15)] px-2 py-0.5 rounded-full">#{e}</span>
-              ))}
-            </div>
+            <h1 className="text-white font-bold leading-none"
+              style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 26, letterSpacing: '0.02em' }}>
+              Salon
+            </h1>
+            <p className="text-white/40 text-[10px] mt-0.5 tracking-widest">
+              {canlilar.length > 0 ? `${canlilar.length} CANLI · ` : ''}{musaitler.length} MÜSAİT
+            </p>
           </div>
-          <Link href={`/yayinci/${yayinci.id}`} className="shrink-0">
-            <DBButton variant="primary" size="sm">
-              Masaya Katıl
-            </DBButton>
+          <Link href="/kesfet"
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-2"
+            style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.25)', backdropFilter: 'blur(12px)' }}>
+            <Compass size={13} className="text-[#C9A84C]" />
+            <span className="text-[#C9A84C] text-[11px] font-bold tracking-widest">KEŞFET</span>
           </Link>
         </div>
       </div>
-    </div>
-  )
-}
 
-/* ── Müsait Masalar Bölümü ──────────────────────── */
-function MasalarBolumu({ yayincilar }: { yayincilar: Yayinci[] }) {
-  return (
-    <div className="px-4 py-5 border-b border-[rgba(255,255,255,0.05)]">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse" />
-          <p className="db-etiket text-[#F0EDE8]">MÜSAİT MASALAR</p>
-        </div>
-        <span className="db-etiket text-[#4CAF50]">{yayincilar.length} yayıncı bekliyor</span>
+      {/* ── Kart sayacı — sağ orta ── */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1.5 pointer-events-none">
+        {sirali.map((_, i) => (
+          <motion.div
+            key={i}
+            animate={{ height: i === aktifIdx ? 18 : 4, opacity: i === aktifIdx ? 1 : 0.25 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+            className="w-1 rounded-full"
+            style={{ background: i === aktifIdx ? '#C9A84C' : 'rgba(255,255,255,0.4)', minHeight: 4 }}
+          />
+        ))}
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        {yayincilar.map(y => (
-          <MasaKarti key={y.id} yayinci={y} />
+      {/* ── Swipe alanı ── */}
+      <div
+        ref={scrollRef}
+        className="h-full overflow-y-scroll"
+        style={{ scrollSnapType: 'y mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+      >
+        {sirali.map((y, i) => (
+          <PerformerKart
+            key={y.id}
+            yayinci={y}
+            begendi={begendiler.has(y.id)}
+            onBegen={() => begen(y.id)}
+            isFirst={i === 0}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-/* ── Masa Kartı (9:16) ──────────────────────────── */
-function MasaKarti({ yayinci }: { yayinci: Yayinci }) {
+/* ─────────────────────────────────────────────────────── */
+
+function PerformerKart({ yayinci, begendi, onBegen, isFirst }: {
+  yayinci: Yayinci
+  begendi: boolean
+  onBegen: () => void
+  isFirst: boolean
+}) {
+  const p        = palette(yayinci.id)
+  const isCanli  = yayinci.durum === 'online'
+  const [hintiGoster, setHintiGoster] = useState(isFirst)
+
+  useEffect(() => {
+    if (!isFirst) return
+    const t = setTimeout(() => setHintiGoster(false), 3000)
+    return () => clearTimeout(t)
+  }, [isFirst])
+
   return (
-    <Link
-      href={`/yayinci/${yayinci.id}`}
-      className="shrink-0 relative rounded-[16px] overflow-hidden bg-[#111111] card-hover pulse-border-gold"
-      style={{ width: 130, height: 231 }}
+    <div
+      className="relative overflow-hidden flex-shrink-0"
+      style={{ height: 'calc(100dvh - 68px)', scrollSnapAlign: 'start' }}
     >
-      {yayinci.avatarUrl && (
-        <Image src={yayinci.avatarUrl} alt={yayinci.displayName} fill className="object-cover object-top" sizes="130px" />
+      {/* Gradient arka plan */}
+      <div className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 130% 90% at 15% 65%, ${p.dark}ff 0%, transparent 50%),
+            radial-gradient(ellipse 90% 130% at 85% 25%, ${p.mid}cc 0%, transparent 50%),
+            radial-gradient(ellipse 70% 70% at 50% 95%, ${p.accent}18 0%, transparent 55%),
+            #050508
+          `,
+        }}
+      />
+
+      {/* Dekoratif ışık lekeleri */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute rounded-full blur-3xl opacity-20"
+          style={{ width: 320, height: 320, top: '5%', left: '-15%', background: p.accent }} />
+        <div className="absolute rounded-full blur-3xl opacity-15"
+          style={{ width: 280, height: 280, bottom: '15%', right: '-10%', background: p.mid }} />
+      </div>
+
+      {/* Fotoğraf veya baş harf */}
+      {yayinci.avatarUrl ? (
+        <img
+          src={yayinci.avatarUrl}
+          alt={yayinci.displayName}
+          className="absolute inset-0 w-full h-full object-cover object-top"
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none">
+          <motion.span
+            initial={{ opacity: 0, scale: 0.75 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 160, damping: 20, delay: 0.05 }}
+            style={{
+              fontFamily: '"Cormorant Garamond", serif',
+              fontSize: 'clamp(160px, 42vw, 280px)',
+              color: `${p.accent}40`,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            {yayinci.displayName.slice(0, 1)}
+          </motion.span>
+        </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.88)] via-transparent to-transparent" />
 
-      {/* Müsait badge */}
-      <div className="absolute top-2 left-2 flex items-center gap-1 bg-[rgba(76,175,80,0.9)] backdrop-blur-sm rounded-full px-2 py-0.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-        <span className="text-white text-[8px] font-bold">MÜSAİT</span>
+      {/* Alt karartma */}
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.55) 32%, rgba(0,0,0,0.1) 60%, transparent 100%)' }} />
+
+      {/* ── Durum badge — üst ── */}
+      <div className="absolute top-[72px] left-5 z-20">
+        <AnimatePresence>
+          {isCanli ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
+              style={{ background: 'rgba(100,0,15,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,60,60,0.3)' }}
+            >
+              <motion.span
+                animate={{ scale: [1, 1.6, 1], opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1.4, repeat: Infinity }}
+                className="w-1.5 h-1.5 rounded-full bg-[#FF3C3C]"
+              />
+              <span className="text-white text-[10px] font-black tracking-widest">CANLI</span>
+              {yayinci.aktifIzleyici > 0 && (
+                <span className="text-white/60 text-[10px]">· {yayinci.aktifIzleyici} izleyici</span>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
+              style={{ background: 'rgba(10,50,15,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(76,175,80,0.35)' }}
+            >
+              <motion.span
+                animate={{ opacity: [1, 0.4, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-1.5 h-1.5 rounded-full bg-[#4CAF50]"
+              />
+              <span className="text-white text-[10px] font-black tracking-widest">MÜSAİT</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-2.5">
-        <p className="text-[12px] text-[#F0EDE8] font-semibold truncate">{yayinci.displayName}</p>
+      {/* ── Sağ aksiyonlar — TikTok tarzı ── */}
+      <div className="absolute right-4 z-20 flex flex-col items-center gap-6"
+        style={{ bottom: 160 }}>
 
-        {/* Fiyat bilgisi */}
-        <div className="flex items-center gap-1 mt-1.5">
-          <Coins size={10} className="text-[#C9A84C]" />
-          <span className="text-[10px] text-[#C9A84C] font-bold">50</span>
-          <span className="text-[9px] text-[#5A5050]">·</span>
-          <Clock size={9} className="text-[#5A5050]" />
-          <span className="text-[9px] text-[#5A5050]">5 dk</span>
-        </div>
+        {/* Beğen */}
+        <motion.button
+          onClick={onBegen}
+          whileTap={{ scale: 0.75 }}
+          className="flex flex-col items-center gap-1.5"
+        >
+          <motion.div
+            animate={begendi ? { scale: [1, 1.5, 0.9, 1.1, 1], rotate: [0, -20, 10, -5, 0] } : {}}
+            transition={{ duration: 0.45 }}
+            className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: begendi ? 'rgba(244,67,54,0.2)' : 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: `1px solid ${begendi ? 'rgba(244,67,54,0.4)' : 'rgba(255,255,255,0.12)'}` }}
+          >
+            <Heart size={20} strokeWidth={1.8}
+              fill={begendi ? '#F44336' : 'none'}
+              className={begendi ? 'text-[#F44336]' : 'text-white'} />
+          </motion.div>
+          <span className="text-white/60 text-[10px] font-medium">
+            {((yayinci.toplamHediye ?? 0) / 1000).toFixed(1)}k
+          </span>
+        </motion.button>
 
-        <div className="mt-1.5 w-full bg-gradient-to-r from-[#8B1A2A] to-[#5C0F1A] rounded-full py-1 text-center">
-          <span className="text-white text-[10px] font-bold">Otur</span>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-/* ── Story ──────────────────────────────────────── */
-function Story({ yayinci }: { yayinci: Yayinci }) {
-  return (
-    <Link href={`/yayinci/${yayinci.id}`} className="shrink-0 flex flex-col items-center gap-1.5" style={{ width: 68 }}>
-      <div className="rounded-full p-[2.5px] bg-gradient-to-tr from-[#8B1A2A] via-[#C9A84C] to-[#8B1A2A]">
-        <div className="w-[58px] h-[58px] rounded-full overflow-hidden border-2 border-[#0A0A0A] bg-[#1A1A1A]">
-          {yayinci.avatarUrl
-            ? <Image src={yayinci.avatarUrl} alt={yayinci.displayName} width={58} height={58} className="object-cover w-full h-full" />
-            : <div className="w-full h-full flex items-center justify-center text-[#C9A84C] font-bold text-lg">{yayinci.displayName[0]}</div>
-          }
-        </div>
-      </div>
-      <span className="text-[9px] font-bold text-white bg-[#8B1A2A] px-1.5 py-0.5 rounded-full -mt-0.5 tracking-wide">CANLI</span>
-      <p className="text-[10px] text-[#A09080] truncate w-full text-center">{yayinci.displayName.split(' ')[0]}</p>
-    </Link>
-  )
-}
-
-/* ── Feed Post ──────────────────────────────────── */
-function FeedPost({ post, yayinci }: { post: Post & { yayinci: Yayinci }; yayinci: Yayinci }) {
-  const [begendi, setBegendi] = useState(false)
-  const canli = ONLINE.includes(yayinci.durum)
-
-  return (
-    <article className="flex flex-col">
-
-      {/* Profil satırı */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        <Link href={`/yayinci/${yayinci.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-          <div className={['rounded-full shrink-0 p-[2px]', canli ? 'bg-gradient-to-tr from-[#8B1A2A] via-[#C9A84C] to-[#8B1A2A]' : 'bg-[#2A2A2A]'].join(' ')}>
-            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#0A0A0A] bg-[#1A1A1A]">
-              {yayinci.avatarUrl
-                ? <Image src={yayinci.avatarUrl} alt={yayinci.displayName} width={36} height={36} className="object-cover w-full h-full" />
-                : <div className="w-full h-full flex items-center justify-center text-[#C9A84C] font-bold">{yayinci.displayName[0]}</div>
-              }
-            </div>
+        {/* Mesaj */}
+        <Link href={`/yayinci/${yayinci.id}`} className="flex flex-col items-center gap-1.5">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <MessageCircle size={20} strokeWidth={1.8} className="text-white" />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="db-govde-kck text-[#F0EDE8] font-semibold truncate">{yayinci.displayName}</p>
-              {yayinci.vipSeviye >= 2 && <span className="text-[#C9A84C] text-xs">✓</span>}
-            </div>
-            <p className="text-[10px] text-[#5A5050]">{post.zaman}</p>
-          </div>
+          <span className="text-white/60 text-[10px] font-medium">{yayinci.toplamGorusme ?? 0}</span>
         </Link>
-        {post.tip === 'canli' && (
-          <div className="flex items-center gap-1 bg-[#8B1A2A] rounded-full px-2.5 py-1 shrink-0 pulse-border-live">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF4444] animate-pulse" />
-            <span className="text-white text-[10px] font-bold tracking-wide">CANLI</span>
-            {yayinci.aktifIzleyici > 0 && (
-              <span className="text-white text-[10px] ml-0.5">· {yayinci.aktifIzleyici}</span>
-            )}
+
+        {/* Hediye */}
+        <Link href={`/yayinci/${yayinci.id}`} className="flex flex-col items-center gap-1.5">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: `${p.accent}18`, backdropFilter: 'blur(12px)', border: `1px solid ${p.accent}35` }}>
+            <Gift size={20} strokeWidth={1.8} style={{ color: p.accent }} />
+          </div>
+          <span className="text-white/60 text-[10px] font-medium">Hediye</span>
+        </Link>
+      </div>
+
+      {/* ── Alt bilgi + CTA ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
+        className="absolute bottom-0 left-0 right-0 z-20 px-5 pb-8"
+      >
+        {/* İsim + VIP */}
+        <div className="flex items-baseline gap-2.5 mb-1">
+          <h2 className="text-white font-bold leading-none"
+            style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 38 }}>
+            {yayinci.displayName}
+          </h2>
+          {yayinci.vipSeviye >= 2 && (
+            <span className="text-xs font-black tracking-widest pb-1"
+              style={{ color: p.accent }}>
+              {yayinci.vipSeviye === 3 ? '✦ VIP' : 'VIP'}
+            </span>
+          )}
+        </div>
+
+        {/* Şehir + Puan */}
+        <div className="flex items-center gap-4 mb-3">
+          <div className="flex items-center gap-1">
+            <MapPin size={11} className="text-white/40" />
+            <span className="text-white/50 text-[12px]">{yayinci.city}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Star size={11} fill={p.accent} style={{ color: p.accent }} />
+            <span className="text-white/80 text-[12px] font-semibold">{yayinci.puan?.toFixed(1)}</span>
+          </div>
+        </div>
+
+        {/* Etiketler */}
+        {yayinci.etiketler && yayinci.etiketler.length > 0 && (
+          <div className="flex gap-2 mb-5 flex-wrap">
+            {yayinci.etiketler.slice(0, 3).map(e => (
+              <span key={e}
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                style={{
+                  background: `${p.accent}15`,
+                  color: p.accent,
+                  border: `1px solid ${p.accent}30`,
+                  backdropFilter: 'blur(8px)',
+                }}>
+                {e}
+              </span>
+            ))}
           </div>
         )}
-      </div>
 
-      {/* Görsel */}
-      {(post.tip === 'fotograf' || post.tip === 'canli' || post.tip === 'video') && yayinci.avatarUrl && (
-        <Link href={`/yayinci/${yayinci.id}`} className="relative block w-full bg-[#111111]" style={{ aspectRatio: post.tip === 'canli' ? '16/9' : '4/5' }}>
-          <Image src={yayinci.avatarUrl} alt={yayinci.displayName} fill className="object-cover object-top" sizes="600px" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.55)] via-transparent to-transparent" />
-
-          {post.tip === 'video' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-[rgba(0,0,0,0.6)] border-2 border-[rgba(255,255,255,0.25)] flex items-center justify-center backdrop-blur-sm">
-                <Play size={24} className="text-white ml-1" fill="white" />
-              </div>
-            </div>
-          )}
-
-          {post.tip === 'canli' && yayinci.aktifIzleyici > 0 && (
-            <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-[rgba(0,0,0,0.65)] backdrop-blur-sm rounded-full px-2.5 py-1">
-              <Users size={10} className="text-[#A09080]" />
-              <span className="text-[11px] text-[#F0EDE8]">{yayinci.aktifIzleyici} izleyici</span>
-            </div>
-          )}
+        {/* CTA */}
+        <Link href={`/yayinci/${yayinci.id}`} className="block">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            className="w-full h-[54px] rounded-2xl font-black text-[14px] tracking-[0.15em] overflow-hidden relative"
+            style={{
+              background: isCanli
+                ? 'linear-gradient(90deg, #5C0011, #8B1A2A, #C9A84C, #8B1A2A, #5C0011)'
+                : `linear-gradient(90deg, ${p.dark}, ${p.mid}, ${p.accent}, ${p.mid}, ${p.dark})`,
+              backgroundSize: '200% auto',
+              animation: 'ctaShimmer 3s linear infinite',
+              color: '#fff',
+              boxShadow: isCanli
+                ? '0 4px 32px rgba(139,26,42,0.5), 0 1px 0 rgba(201,168,76,0.3) inset'
+                : `0 4px 32px ${p.accent}30, 0 1px 0 ${p.accent}25 inset`,
+            }}
+          >
+            {isCanli ? '🎙  YAYINA KATIL' : '✦  OTUR'}
+          </motion.button>
         </Link>
-      )}
+      </motion.div>
 
-      {/* Metin içeriği */}
-      {post.icerik && (
-        <div className="px-4 pt-3">
-          <p className="db-govde-kck text-[#F0EDE8] leading-relaxed">{post.icerik}</p>
-          {post.etiketler && post.etiketler.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {post.etiketler.map(e => (
-                <span key={e} className="text-[#C9A84C] text-[12px] font-medium">#{e}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Aksiyon bar */}
-      <div className="flex items-center gap-5 px-4 py-3">
-        <button
-          onClick={() => setBegendi(p => !p)}
-          className={['flex items-center gap-1.5 transition-all', begendi ? 'text-[#F44336]' : 'text-[#5A5050] hover:text-[#F44336]'].join(' ')}
-        >
-          <Heart size={20} strokeWidth={1.8} fill={begendi ? '#F44336' : 'none'} />
-          <span className="text-[12px]">{(post.begeni + (begendi ? 1 : 0)).toLocaleString('tr-TR')}</span>
-        </button>
-
-        <button className="flex items-center gap-1.5 text-[#5A5050] hover:text-[#F0EDE8] transition-colors">
-          <MessageCircle size={20} strokeWidth={1.8} />
-          <span className="text-[12px]">{post.yorum}</span>
-        </button>
-
-        <button className="flex items-center gap-1.5 text-[#5A5050] hover:text-[#F0EDE8] transition-colors">
-          <Share2 size={18} strokeWidth={1.8} />
-        </button>
-
-        <div className="ml-auto">
-          {post.tip === 'canli'
-            ? <Link href={`/yayinci/${yayinci.id}`}><DBButton variant="primary" size="sm">Katıl</DBButton></Link>
-            : <Link href={`/yayinci/${yayinci.id}`}><DBButton variant="ghost" size="sm">Profil</DBButton></Link>
-          }
-        </div>
-      </div>
-
-    </article>
+      {/* ── İlk kartta kaydır ipucu ── */}
+      <AnimatePresence>
+        {hintiGoster && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.4 }}
+            className="absolute z-30 flex flex-col items-center gap-1 pointer-events-none"
+            style={{ bottom: 170, left: '50%', transform: 'translateX(-50%)' }}
+          >
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+              className="flex flex-col items-center gap-1"
+            >
+              <ChevronUp size={16} className="text-white/35" />
+              <span className="text-white/35 text-[10px] tracking-[0.2em]">kaydır</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

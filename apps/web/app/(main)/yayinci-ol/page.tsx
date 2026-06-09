@@ -79,7 +79,7 @@ export default function YayinciOlSayfasi() {
 
   if (adim === 'gonderildi') {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
+      <div className="min-h-screen mesh-bg flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full bg-[rgba(201,168,76,0.1)] border border-[rgba(201,168,76,0.2)] flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={36} className="text-[#C9A84C]" />
@@ -100,7 +100,7 @@ export default function YayinciOlSayfasi() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] px-4 py-8">
+    <div className="min-h-screen mesh-bg px-4 py-8">
       <div className="max-w-lg mx-auto">
 
         {/* Başlık */}

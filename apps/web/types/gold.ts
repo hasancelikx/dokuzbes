@@ -1,5 +1,3 @@
-import type { Timestamp } from 'firebase/firestore'
-
 export interface GoldPaketi {
   id: string
   isim: string
@@ -22,6 +20,6 @@ export interface Transaction {
   tur: 'satin_alma' | 'harcama' | 'iade' | 'bonus'
   miktar: number          // + artış, - azalış
   aciklama: string
-  zaman: Timestamp
-  iyzicoId?: string       // Ödeme referansı
+  zaman: string           // ISO 8601
+  iyzicoId?: string
 }

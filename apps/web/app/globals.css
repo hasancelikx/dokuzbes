@@ -59,6 +59,7 @@
 html {
   background-color: #0A0A0A;
   color: #F0EDE8;
+  overflow-x: hidden;
 }
 
 body {
@@ -66,6 +67,8 @@ body {
   background-color: #0A0A0A;
   color: #F0EDE8;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100%;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -281,3 +284,329 @@ body {
 ::-webkit-scrollbar-track { background: #111111; }
 ::-webkit-scrollbar-thumb { background: #C9A84C40; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #C9A84C80; }
+
+/* ═══════════════════════════════════════════════════════
+   PREMIUM REDESIGN UTILITIES
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Glassmorphism ─────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.glass-sm {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.glass-gold {
+  background: rgba(201, 168, 76, 0.06);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(201, 168, 76, 0.16);
+}
+.glass-dark {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Mesh gradient background ──────────────────────── */
+.mesh-bg {
+  background-color: #050508;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 40%, rgba(201,168,76,0.055) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 55% at 90% 10%, rgba(139,26,42,0.09)  0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 55% 95%, rgba(50,15,80,0.06)   0%, transparent 50%);
+}
+
+/* ── Performer card glow rings ─────────────────────── */
+@keyframes liveCardGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(255,68,68,0.75),
+      0 0 22px  rgba(255,68,68,0.22),
+      0 0 44px  rgba(139,26,42,0.14),
+      0 10px 36px rgba(0,0,0,0.65);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px   rgba(201,168,76,0.80),
+      0 0 28px  rgba(201,168,76,0.22),
+      0 0 52px  rgba(139,26,42,0.12),
+      0 10px 36px rgba(0,0,0,0.65);
+  }
+}
+.live-card-glow { animation: liveCardGlow 2.5s ease-in-out infinite; }
+
+.musait-card-glow {
+  box-shadow:
+    0 0 0 1.5px rgba(76,175,80,0.4),
+    0 0 18px  rgba(76,175,80,0.12),
+    0 8px 24px rgba(0,0,0,0.55);
+}
+
+/* ── Ambient float orbs ────────────────────────────── */
+@keyframes ambientOrb1 {
+  0%, 100% { transform: translate(0,0) scale(1);    opacity: 0.7; }
+  33%       { transform: translate(40px,-50px) scale(1.1); opacity: 0.9; }
+  66%       { transform: translate(-30px,28px) scale(0.95); opacity: 0.6; }
+}
+@keyframes ambientOrb2 {
+  0%, 100% { transform: translate(0,0) scale(1);    opacity: 0.5; }
+  50%       { transform: translate(-50px,-40px) scale(1.12); opacity: 0.8; }
+}
+.ambient-orb-1 { animation: ambientOrb1 12s ease-in-out infinite; }
+.ambient-orb-2 { animation: ambientOrb2 16s ease-in-out infinite; }
+
+/* ── Stories live ring ─────────────────────────────── */
+@keyframes storyRingPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+.story-ring-live {
+  background: conic-gradient(#FF4444, #C9A84C, #8B1A2A, #C9A84C, #FF4444);
+  animation: storyRingPulse 1.8s ease-in-out infinite;
+}
+.story-ring-online {
+  background: conic-gradient(#C9A84C 0%, rgba(201,168,76,0.3) 50%, #C9A84C 100%);
+}
+
+/* ── Premium CTA button ────────────────────────────── */
+@keyframes ctaShimmer {
+  0%   { background-position:  200% center; }
+  100% { background-position: -200% center; }
+}
+.cta-shimmer {
+  background: linear-gradient(90deg, #8B1A2A 0%, #C9A84C 35%, #f0d878 50%, #C9A84C 65%, #8B1A2A 100%);
+  background-size: 200% auto;
+  animation: ctaShimmer 3s linear infinite;
+}
+
+/* ── Input glass ───────────────────────────────────── */
+.input-glass {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.input-glass::placeholder { color: rgba(255,255,255,0.22); }
+.input-glass:focus {
+  outline: none;
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(201,168,76,0.5);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+}
+
+/* ── Card depth shadow ─────────────────────────────── */
+.card-depth {
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.3),
+    0 16px 40px rgba(0,0,0,0.25);
+}
+.card-depth-gold {
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.35),
+    0 0 0 1px rgba(201,168,76,0.12),
+    0 0 24px rgba(201,168,76,0.06);
+}
+
+/* ── Gradient text ─────────────────────────────────── */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #C9A84C 0%, #f0d878 50%, #C9A84C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.text-gradient-hero {
+  background: linear-gradient(160deg, #FFFFFF 0%, #F0EDE8 60%, #C9A84C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Nav active indicator ──────────────────────────── */
+.nav-item-active {
+  background: rgba(201,168,76,0.08);
+  box-shadow: inset 2px 0 0 #C9A84C;
+}
+
+/* ── Neon glow text ────────────────────────────────── */
+@keyframes neonPulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(201,168,76,0.6),  0 0 16px rgba(201,168,76,0.3); }
+  50%       { text-shadow: 0 0 14px rgba(201,168,76,0.9), 0 0 28px rgba(201,168,76,0.5); }
+}
+.neon-gold { animation: neonPulse 2.5s ease-in-out infinite; }
+
+/* ══════════════════════════════════════════════════
+   VIP PREMIUM LAYER
+   ══════════════════════════════════════════════════ */
+
+/* Güçlendirilmiş mesh arka plan */
+.mesh-bg {
+  background-color: #050508;
+  background-image:
+    radial-gradient(ellipse 90% 65% at 8%  38%, rgba(201,168,76,0.07)  0%, transparent 58%),
+    radial-gradient(ellipse 65% 60% at 92% 8%,  rgba(139,26,42,0.11)  0%, transparent 52%),
+    radial-gradient(ellipse 55% 45% at 52% 98%, rgba(60,15,95,0.07)   0%, transparent 48%),
+    radial-gradient(ellipse 40% 35% at 80% 60%, rgba(201,168,76,0.03) 0%, transparent 60%);
+}
+
+/* VIP kart — derin glassmorphism */
+.vip-card {
+  background: linear-gradient(145deg, rgba(14,14,22,0.96) 0%, rgba(9,9,15,0.99) 100%);
+  border: 1px solid rgba(201,168,76,0.13);
+  border-radius: 20px;
+  box-shadow:
+    0 2px 8px  rgba(0,0,0,0.5),
+    0 8px 32px rgba(0,0,0,0.35),
+    inset 0 0.5px 0 rgba(201,168,76,0.1);
+}
+
+/* VIP kart — hover ile hafif lift */
+.vip-card-hover {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.vip-card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(201,168,76,0.25);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.55),
+    0 16px 48px rgba(0,0,0,0.35),
+    0 0 32px  rgba(201,168,76,0.06),
+    inset 0 0.5px 0 rgba(201,168,76,0.15);
+}
+
+/* Altın yatay ayırıcı */
+.gold-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(201,168,76,0.35) 25%,
+    rgba(201,168,76,0.45) 50%,
+    rgba(201,168,76,0.35) 75%,
+    transparent 100%
+  );
+}
+
+/* Premium istatistik kutusu */
+.vip-stat {
+  background: rgba(201,168,76,0.04);
+  border: 1px solid rgba(201,168,76,0.1);
+  border-radius: 14px;
+}
+
+/* Sidebar aktif nav glow */
+.sidebar-nav-active {
+  background: rgba(201,168,76,0.08);
+  box-shadow:
+    inset 3px 0 0 #C9A84C,
+    0 0 24px rgba(201,168,76,0.04);
+}
+
+/* Mobil nav aktif pill — VIP */
+.mobile-nav-active-pill {
+  background: linear-gradient(160deg, rgba(201,168,76,0.16) 0%, rgba(201,168,76,0.07) 100%);
+  border: 1px solid rgba(201,168,76,0.2);
+  box-shadow:
+    0 0 14px rgba(201,168,76,0.12) inset,
+    0 2px 12px rgba(0,0,0,0.4);
+}
+
+/* Mobil nav — safe area + height */
+.mob-nav-height {
+  height: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+.mob-nav-inner { height: 68px; }
+
+/* Sayfa içeriği — mobil safe area bottom pad */
+.page-safe-pad {
+  padding-bottom: 68px;
+}
+@media screen and (max-width: 767px) {
+  .page-safe-pad {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Sayfa bölüm başlığı */
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: #F0EDE8;
+  letter-spacing: 0.03em;
+}
+
+/* Etiket çizgisi */
+.label-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #5A5050;
+}
+.label-line::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(201,168,76,0.15), transparent);
+}
+
+/* VIP rozet */
+.vip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(201,168,76,0.1);
+  border: 1px solid rgba(201,168,76,0.25);
+  color: #C9A84C;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* Canlı yayın badge */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(139,26,42,0.35);
+  border: 1px solid rgba(255,68,68,0.3);
+  color: #FF7777;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Altın parlama arka plan orb'u */
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  50%       { transform: translate(8px,-12px) scale(1.06); }
+}
+.orb-gold-top {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 65%);
+  animation: orbFloat 14s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Premium sayfalar için giriş animasyonu */
+@keyframes pageReveal {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.page-reveal { animation: pageReveal 0.4s cubic-bezier(0.22,1,0.36,1) both; }

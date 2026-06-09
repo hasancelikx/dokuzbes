@@ -35,16 +35,4 @@ export async function statusRoutes(app: FastifyInstance) {
     }
   )
 
-  // Kendi performerprofilini getir
-  app.get('/performers/me',
-    { preHandler: [tokenDogrula, roleCheck('performer')] },
-    async (req) => {
-      const yayinci = await db.performer.findUnique({
-        where: { userId: req.kullanici.userId },
-        include: { user: { select: { email: true, nickname: true, avatarUrl: true } } },
-      })
-      if (!yayinci) throw new AppError('YAYINCI_BULUNAMADI', 404)
-      return yayinci
-    }
-  )
 }

@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { useState, useEffect, useRef } from 'react'
-import { benimKimim } from '@/lib/firebase/auth'
+import { benimKimim } from '@/lib/auth'
 import { useAuthStore } from '@/store/authStore'
 import { api } from '@/lib/apiClient'
 

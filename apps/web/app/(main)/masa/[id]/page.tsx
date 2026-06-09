@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   LiveKitRoom,
@@ -22,7 +22,7 @@ import { toast } from 'sonner'
 interface MasaToken {
   token: string; odaAdi: string; livekitUrl: string
   rol: 'yayinci' | 'musteri'
-  masa: { id: string; tur: string; durum: string; performerAdi: string; musteriAdi: string | null }
+  masa: { id: string; tur: string; durum: string; performerAdi: string; musteriAdi: string | null; performerId?: string }
 }
 interface ChatMesaj {
   id: string; metin: string; createdAt: string
@@ -30,7 +30,6 @@ interface ChatMesaj {
 }
 interface HediyeItem { id: string; isim: string; ikon: string; goldMaliyet: number }
 
-const MASA_TUR_SURE: Record<string, number> = { kisa: 15, uzun: 45, ozel: 60 }
 const CHAT_WS = process.env.NEXT_PUBLIC_CHAT_URL ?? 'ws://localhost:3005'
 
 /* ─── Hediye Drawer ──────────────────────────────── */
@@ -131,7 +130,7 @@ function ChatPanel({
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [mesajlar])
 
-  function gonder(e: React.FormEvent) {
+  function gonder(e: React.SyntheticEvent) {
     e.preventDefault()
     if (!metin.trim() || !ws || ws.readyState !== WebSocket.OPEN) return
     ws.send(JSON.stringify({ tip: 'mesaj', masaId, metin: metin.trim() }))
@@ -195,8 +194,8 @@ function ChatPanel({
 
 /* ─── Kontrol Çubuğu ─────────────────────────────── */
 function KontrolCubugu({
-  masayiKapat, hediyeAc, sure,
-}: { masayiKapat: () => void; hediyeAc: () => void; sure: string }) {
+  masayiKapat, hediyeAc, sohbetAc, sure,
+}: { masayiKapat: () => void; hediyeAc: () => void; sohbetAc: () => void; sure: string }) {
   const { localParticipant } = useLocalParticipant()
   const [sesli, setSesli] = useState(true)
   const [goruntulu, setGoruntulu] = useState(true)
@@ -245,12 +244,16 @@ function KontrolCubugu({
         </button>
       </div>
 
-      {/* Hediye */}
-      <div className="flex justify-end w-24">
+      {/* Sağ: Hediye + Sohbet (mobil) */}
+      <div className="flex items-center justify-end gap-2 w-24">
         <button onClick={hediyeAc}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[rgba(201,168,76,0.12)] text-[#C9A84C] text-xs font-medium hover:bg-[rgba(201,168,76,0.2)] transition-colors">
           <Gift size={14} />
-          Hediye
+          <span className="hidden sm:inline">Hediye</span>
+        </button>
+        <button onClick={sohbetAc}
+          className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/8 text-gray-400 text-xs font-medium hover:bg-white/12 transition-colors">
+          <Send size={14} />
         </button>
       </div>
     </div>
@@ -266,6 +269,7 @@ export default function MasaSayfasi() {
   const [hata, setHata] = useState<string | null>(null)
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hediyeAcik, setHediyeAcik] = useState(false)
+  const [mobilSohbet, setMobilSohbet] = useState(false)
   const [sure, setSure] = useState('00:00')
   const baslangicRef = useRef<Date | null>(null)
 
@@ -374,21 +378,21 @@ export default function MasaSayfasi() {
             <KontrolCubugu
               masayiKapat={masayiKapat}
               hediyeAc={() => setHediyeAcik(p => !p)}
+              sohbetAc={() => setMobilSohbet(p => !p)}
               sure={sure}
             />
             {hediyeAcik && (
               <HediyeDrawer
                 masaId={id}
-                performerId={masaToken.rol === 'musteri' ? undefined : undefined}
+                performerId={masaToken.rol === 'musteri' ? masaToken.masa.performerId : undefined}
                 onKapat={() => setHediyeAcik(false)}
               />
             )}
           </LiveKitRoom>
         </div>
 
-        {/* Chat (sağ) — sadece desktop */}
+        {/* Chat (sağ) — desktop */}
         <div className="hidden lg:flex flex-col w-72 border-l border-white/8 bg-[#0d0d14]">
-          {/* Chat başlık */}
           <div className="px-4 py-3 border-b border-white/8 shrink-0">
             <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">Sohbet</p>
           </div>
@@ -397,6 +401,23 @@ export default function MasaSayfasi() {
           </div>
         </div>
       </div>
+
+      {/* Chat bottom sheet — mobil */}
+      {mobilSohbet && (
+        <div className="lg:hidden absolute inset-0 z-30 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobilSohbet(false)} />
+          <div className="relative flex flex-col bg-[#0d0d14] rounded-t-2xl border-t border-white/10"
+            style={{ height: '55%' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 shrink-0">
+              <p className="text-xs text-gray-400 font-medium tracking-wide uppercase">Sohbet</p>
+              <button onClick={() => setMobilSohbet(false)} className="text-gray-600 hover:text-gray-400 text-lg leading-none">×</button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ChatPanel masaId={id} mevcutUserId={kullanici?.id ?? ''} ws={ws} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

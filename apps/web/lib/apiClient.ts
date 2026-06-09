@@ -18,12 +18,46 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+// Refresh tetiklememesi gereken yollar (sonsuz döngü / anlamsız yenileme önler)
+const REFRESH_HARIC = ['/auth/refresh', '/auth/login', '/auth/register', '/auth/logout']
+
+// Single-flight: aynı anda birçok istek 401 alsa bile tek bir /auth/refresh çağrısı yapılır
+let refreshPromise: Promise<boolean> | null = null
+
+function tokenYenile(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${BASE.auth}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(r => r.ok)
+      .catch(() => false)
+      .finally(() => { refreshPromise = null })
+  }
+  return refreshPromise
+}
+
+function oturumBitti() {
+  if (typeof window === 'undefined') return
+  // Zaten giriş/kayıt sayfasındaysak yönlendirme yapma (döngü önler)
+  const yol = window.location.pathname
+  if (yol.startsWith('/giris') || yol.startsWith('/kayit')) return
+  window.location.href = '/giris?expired=1'
+}
+
+async function apiFetch<T>(url: string, options?: RequestInit, yenidenDene = true): Promise<T> {
   const res = await fetch(url, {
     ...options,
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   })
+
+  // Access token süresi dolmuş → bir kez yenile, sonra orijinal isteği tekrarla
+  if (res.status === 401 && yenidenDene && !REFRESH_HARIC.some(p => url.includes(p))) {
+    const yenilendi = await tokenYenile()
+    if (yenilendi) return apiFetch<T>(url, options, false)
+    oturumBitti()
+  }
 
   const data = await res.json().catch(() => ({}))
 
@@ -34,12 +68,29 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   return data as T
 }
 
+// Multipart (dosya) yükleme — Content-Type'ı tarayıcı boundary ile kendi ayarlar
+async function apiUpload<T>(url: string, form: FormData, yenidenDene = true): Promise<T> {
+  const res = await fetch(url, { method: 'POST', credentials: 'include', body: form })
+
+  if (res.status === 401 && yenidenDene && !REFRESH_HARIC.some(p => url.includes(p))) {
+    const yenilendi = await tokenYenile()
+    if (yenilendi) return apiUpload<T>(url, form, false)
+    oturumBitti()
+  }
+
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new ApiError(data.code ?? 'BILINMEYEN_HATA', res.status, data.message)
+  return data as T
+}
+
 function makeClient(base: string) {
   return {
     get:    <T>(path: string)               => apiFetch<T>(`${base}${path}`),
     post:   <T>(path: string, body?: unknown) => apiFetch<T>(`${base}${path}`, { method: 'POST',  body: JSON.stringify(body ?? {}) }),
+    put:    <T>(path: string, body?: unknown) => apiFetch<T>(`${base}${path}`, { method: 'PUT',   body: JSON.stringify(body ?? {}) }),
     patch:  <T>(path: string, body?: unknown) => apiFetch<T>(`${base}${path}`, { method: 'PATCH', body: JSON.stringify(body ?? {}) }),
     delete: <T>(path: string)               => apiFetch<T>(`${base}${path}`, { method: 'DELETE' }),
+    upload: <T>(path: string, form: FormData) => apiUpload<T>(`${base}${path}`, form),
   }
 }
 

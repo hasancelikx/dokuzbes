@@ -1,5 +1,3 @@
-import type { Timestamp } from 'firebase/firestore'
-
 export interface Hediye {
   id: string
   isim: string
@@ -15,5 +13,5 @@ export interface GonderilmisHediye {
   aliciId: string
   hediyeId: string
   goldMaliyet: number
-  zaman: Timestamp
+  zaman: string           // ISO 8601
 }

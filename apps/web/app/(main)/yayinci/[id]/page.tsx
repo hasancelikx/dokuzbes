@@ -5,14 +5,15 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, MapPin, ArrowLeft, Heart, MessageSquare, Gift, Star, Clock, Bell, BellOff, Coins, CheckCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { MapPin, ArrowLeft, Heart, MessageSquare, Star, Clock, Bell, BellOff, Coins, CheckCircle } from 'lucide-react'
 import { DBButton } from '@/components/ui/DBButton'
-import { DBAvatar } from '@/components/ui/DBAvatar'
 import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
 import { DBKonfeti } from '@/components/ui/DBKonfeti'
 import { useYayinci } from '@/hooks/useYayinci'
 import { useAuth } from '@/hooks/useAuth'
 import { masaAc } from '@/services/masaService'
+import { api } from '@/lib/apiClient'
 import { toast } from 'sonner'
 import type { YayinciDurumu } from '@/types/yayinci'
 
@@ -74,11 +75,41 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
   const router = useRouter()
   const [aktifSekme, setAktifSekme] = useState<Sekme>('hakkinda')
   const [takipEdiliyor, setTakipEdiliyor] = useState(false)
+  const [takipSayisi, setTakipSayisi] = useState(128)
   const [haberVerilsin, setHaberVerilsin] = useState(false)
   const [konfeti, setKonfeti] = useState(false)
   const [secilenMasa, setSecilenMasa] = useState<string | null>(null)
   const [hatirlatSet, setHatirlatSet] = useState<string | null>(null)
   const [masaYukleniyor, setMasaYukleniyor] = useState(false)
+
+  async function handleTakip() {
+    const yeni = !takipEdiliyor
+    setTakipEdiliyor(yeni)
+    setTakipSayisi(p => yeni ? p + 1 : p - 1)
+    try {
+      await api.user[yeni ? 'post' : 'delete'](`/takip/${id}`)
+    } catch {
+      setTakipEdiliyor(!yeni)
+      setTakipSayisi(p => yeni ? p - 1 : p + 1)
+      toast.error('İşlem başarısız.')
+    }
+  }
+
+  function handleHediyeGonder(isim: string, gold: number) {
+    toast.success(`${isim} hediyesi gönderildi! −${gold} 🪙`)
+  }
+
+  function handleHaberVer() {
+    const yeni = !haberVerilsin
+    setHaberVerilsin(yeni)
+    toast[yeni ? 'success' : 'info'](yeni ? 'Masa boşalınca sizi haberdar edeceğiz.' : 'Bildirim iptal edildi.')
+  }
+
+  function handleHatirlatToggle(gun: string) {
+    const yeni = gun === hatirlatSet ? null : gun
+    setHatirlatSet(yeni)
+    toast[yeni ? 'success' : 'info'](yeni ? `${gun} için hatırlatıcı kuruldu.` : 'Hatırlatıcı kaldırıldı.')
+  }
 
   async function handleMasaAc() {
     if (!yayinci || !secilenMasa) return
@@ -126,7 +157,7 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
   const isVip      = (kullanici?.vipLevel ?? 0) >= 3
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen mesh-bg">
 
       {/* Konfeti — VIP giriş efekti */}
       <DBKonfeti aktif={konfeti} sure={3500} sayi={50} onBitti={() => setKonfeti(false)} />
@@ -143,7 +174,7 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
       )}
 
       {/* ── Hero ── */}
-      <div className="relative w-full h-[300px]">
+      <div className="relative w-full h-[340px] sm:h-[420px]">
         {yayinci.avatarUrl ? (
           <Image src={yayinci.avatarUrl} alt={yayinci.displayName} fill className="object-cover" sizes="700px" priority />
         ) : (
@@ -197,25 +228,20 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
             size="sm"
             className="flex-1"
             icon={<Heart size={14} fill={takipEdiliyor ? '#C9A84C' : 'none'} />}
-            onClick={() => setTakipEdiliyor(p => !p)}
+            onClick={handleTakip}
           >
             {takipEdiliyor ? 'Takip Ediliyor' : 'Takip Et'}
           </DBButton>
 
-          <DBButton variant="secondary" size="sm" className="flex-1" icon={<MessageSquare size={14} />}>
+          <DBButton variant="secondary" size="sm" className="flex-1" icon={<MessageSquare size={14} />}
+            onClick={() => router.push(`/mesajlar?performer=${encodeURIComponent(yayinci.displayName)}`)}>
             Mesaj
           </DBButton>
-
-          {canli && !mesgul && (
-            <DBButton variant="primary" size="sm" className="flex-1" icon={<Gift size={14} />}>
-              Masaya Katıl
-            </DBButton>
-          )}
         </div>
 
         {/* ── Masa seçici (müsaitse) ── */}
         {musait && (
-          <div className="bg-[#111111] border border-[rgba(201,168,76,0.15)] rounded-[16px] p-4 flex flex-col gap-3">
+          <div className="vip-card p-4 flex flex-col gap-3">
             <p className="db-etiket text-[#5A5050]">MASA SÜRESİ SEÇ</p>
             <div className="grid grid-cols-3 gap-2">
               {MASA_TIPLERI.map(m => (
@@ -254,14 +280,14 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
 
         {/* ── Meşgulse: "Masa Boşaldı Bildirimi" ── */}
         {mesgul && (
-          <div className="bg-[#111111] border border-[rgba(244,67,54,0.15)] rounded-[16px] p-4 flex flex-col gap-3 fade-in-scale">
+          <div className="vip-card p-4 flex flex-col gap-3 fade-in-scale" style={{ borderColor: 'rgba(244,67,54,0.2)' }}>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#F44336]" />
               <p className="db-govde-kck text-[#F0EDE8] font-semibold">{yayinci.displayName} şu an meşgul</p>
             </div>
             <p className="db-kucuk text-[#5A5050]">Masa boşaldığında sizi bilgilendirmemizi ister misiniz?</p>
             <button
-              onClick={() => setHaberVerilsin(p => !p)}
+              onClick={handleHaberVer}
               className={[
                 'flex items-center gap-2.5 py-3 px-4 rounded-[12px] border transition-all cursor-pointer w-full',
                 haberVerilsin
@@ -286,13 +312,13 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
         <div className="grid grid-cols-4 gap-2">
           {[
             { label: 'Takipçi', value: yayinci.toplamGorusme > 0 ? `${(yayinci.toplamGorusme * 80).toLocaleString('tr-TR')}` : '0' },
-            { label: 'Takip',   value: '128' },
+            { label: 'Takip',   value: takipSayisi.toLocaleString('tr-TR') },
             { label: 'Yayın',   value: yayinci.toplamGorusme.toString() },
             { label: 'Hediye',  value: yayinci.toplamHediye.toLocaleString('tr-TR') },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-[#111111] border border-[rgba(201,168,76,0.08)] rounded-[12px] p-3 text-center">
-              <p className="db-sayi text-[#F0EDE8]">{value}</p>
-              <p className="db-kucuk text-[#5A5050] mt-0.5">{label}</p>
+            <div key={label} className="vip-card p-3 text-center">
+              <p className="font-bold text-[#F0EDE8] tabular-nums" style={{ fontSize: 17 }}>{value}</p>
+              <p className="text-[10px] text-[#5A5050] mt-0.5 tracking-wide uppercase">{label}</p>
             </div>
           ))}
         </div>
@@ -306,17 +332,23 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
         </div>
 
         {/* ── Sekmeler ── */}
-        <div className="flex border-b border-[rgba(255,255,255,0.06)]">
+        <div className="flex relative border-b border-[rgba(255,255,255,0.06)]">
           {sekmeler.map(({ id: sid, label }) => (
             <button
               key={sid}
               onClick={() => setAktifSekme(sid)}
-              className={[
-                'flex-1 py-3 db-kucuk font-medium transition-all duration-150 border-b-2 -mb-px cursor-pointer',
-                aktifSekme === sid ? 'text-[#C9A84C] border-[#C9A84C]' : 'text-[#5A5050] border-transparent hover:text-[#A09080]',
-              ].join(' ')}
+              className="relative flex-1 py-3 text-[11px] font-semibold tracking-[0.05em] transition-colors duration-150 cursor-pointer"
+              style={{ color: aktifSekme === sid ? '#C9A84C' : '#5A5050' }}
             >
               {label}
+              {aktifSekme === sid && (
+                <motion.div
+                  layoutId="yayinci-tab-indicator"
+                  className="absolute bottom-[-1px] left-0 right-0 h-[2px] rounded-full"
+                  style={{ background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)' }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+                />
+              )}
             </button>
           ))}
         </div>
@@ -365,13 +397,13 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
                       <span className={['db-kucuk font-medium', aktif ? 'text-[#C9A84C]' : 'text-[#3A3030]'].join(' ')}>{saat}</span>
                       {aktif && (
                         <button
-                          onClick={() => setHatirlatSet(gun === hatirlatSet ? null : gun)}
-                          className="transition-colors"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"
                           title="Hatırlat"
+                          onClick={() => handleHatirlatToggle(gun)}
                         >
                           {hatirlatSet === gun
-                            ? <BellOff size={12} className="text-[#C9A84C]" />
-                            : <Bell size={12} className="text-[#3A3030] hover:text-[#5A5050]" />
+                            ? <BellOff size={13} className="text-[#C9A84C]" />
+                            : <Bell size={13} className="text-[#3A3030]" />
                           }
                         </button>
                       )}
@@ -397,6 +429,7 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
               {HEDIYE_KATALOG.map(h => (
                 <button
                   key={h.isim}
+                  onClick={() => handleHediyeGonder(h.isim, h.gold)}
                   className="flex flex-col items-center gap-2 p-3 bg-[#111111] border border-[rgba(201,168,76,0.08)] rounded-[14px] hover:border-[rgba(201,168,76,0.3)] hover:bg-[rgba(201,168,76,0.04)] transition-all card-hover cursor-pointer"
                 >
                   <span className="text-3xl leading-none">{h.emoji}</span>

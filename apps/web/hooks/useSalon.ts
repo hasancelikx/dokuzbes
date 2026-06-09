@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/apiClient'
 import type { Yayinci, YayinciDurumu } from '@/types/yayinci'
 
@@ -9,28 +9,15 @@ export type SalonFiltre = 'tumu' | 'online' | 'musait'
 const ONLINE_DURUMLAR: YayinciDurumu[] = ['online', 'musait', 'mesgul', 'molada']
 
 export function useSalon(filtre: SalonFiltre = 'tumu') {
-  const [tumYayincilar, setTumYayincilar] = useState<Yayinci[]>([])
-  const [yukleniyor, setYukleniyor] = useState(true)
-  const [hata, setHata] = useState<string | null>(null)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['salon'],
+    queryFn: () => api.performer.get<{ yayincilar: Yayinci[] }>('/performers'),
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+    retry: 1,
+  })
 
-  const getir = useCallback(async () => {
-    try {
-      const veri = await api.performer.get<{ yayincilar: Yayinci[] }>('/performers')
-      setTumYayincilar(veri.yayincilar ?? [])
-      setHata(null)
-    } catch {
-      setHata('Yayıncılar yüklenemedi.')
-    } finally {
-      setYukleniyor(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    getir()
-    // Her 30 saniyede bir yenile
-    const interval = setInterval(getir, 30_000)
-    return () => clearInterval(interval)
-  }, [getir])
+  const tumYayincilar = data?.yayincilar ?? []
 
   const yayincilar = tumYayincilar.filter((y) => {
     if (filtre === 'online') return ONLINE_DURUMLAR.includes(y.durum)
@@ -38,5 +25,9 @@ export function useSalon(filtre: SalonFiltre = 'tumu') {
     return true
   })
 
-  return { yayincilar, yukleniyor, hata }
+  return {
+    yayincilar,
+    yukleniyor: isLoading,
+    hata: error ? 'Yayıncılar yüklenemedi.' : null,
+  }
 }

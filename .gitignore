@@ -35,3 +35,6 @@ prisma/migrations/*.sql.bak
 
 # Next.js
 next-env.d.ts
+
+# Runtime (dev.sh servis PID dosyası)
+.service-pids
