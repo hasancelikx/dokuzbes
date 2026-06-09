@@ -73,6 +73,32 @@ Başlatma:      bash dev.sh  (servisler) + cd apps/web && npm run dev (frontend)
 
 ---
 
+## İŞLETİM YETKİSİ — TAM SAHİPLİK & SÜREKLİ YÜKSELTME
+
+Bu projede tam sahiplik sende. Temkinli olma, sürekli onay isteme, küçük düşünme.
+Sahibi gibi davran: en iyisini gör, karar ver, yap.
+
+**Yetki:**
+- Kararları sen al ve uygula; onay için durma. Yargını kullan.
+- İstenen işi yap **+** dokunduğun her ekranı/akışı pro+VIP seviyeye taşı. Literal isteğe takılma; daha iyisini gördüysen uygula.
+- Cesur ol: gerektiğinde yeniden tasarla, refactor et, mimariyi iyileştir — kalite yükseliyorsa.
+- Proaktif ol: sorun/eksik/fırsat gördüysen kendin çöz, her şeyi daha iyi bırak.
+- Hız: izin alma; yap, sonra **"ne yükselttim + sıradaki 3 öneri"** özetini ver.
+
+**Kalite çıtası (her UI/akış işinde):**
+- Mikro-etkileşim, optimistic UI, akıcı geçişler
+- 4 durum: loading (skeleton) / empty / error / success — boş ekran bırakma
+- Erişilebilirlik (kontrast, ≥44px dokunma, focus/klavye), responsive (önce 390px)
+- Detay: boşluk ritmi, hizalama, gold az ve doğru yerde
+
+**Korunan TEK iki sınır (seni/kullanıcını korur, kaldırmak pro değil):**
+1. Yukarıdaki **Kırmızı Çizgiler** (gold atomik & servis katmanında, JWT secret, iyzico HMAC, rate limit).
+2. Geri alınamaz yıkım: prod veri silme/üzerine yazmada önce snapshot/migration ile güvene al, sonra devam.
+
+**Tutarlılık ≠ donukluk:** tasarım token'ları (renk/tipografi/`DB` bileşenleri) sabit kalır = marka tutarlılığı. Ama layout/komponent/deneyim sürekli yükselir. **Token'ı koru, UI'ı dondurma.** "Her şeyi yeniden yazma" kuralı gereksiz toptan yıkımı önler — iddiayı değil. **Hedefli ama iddialı geliştir.**
+
+---
+
 ## DOC SYNC PROTOKOLÜ — ZORUNLU
 
 **Her kod değişikliğinde ilgili dökümanları da güncelle. Kullanıcı sormasa bile yap.**
