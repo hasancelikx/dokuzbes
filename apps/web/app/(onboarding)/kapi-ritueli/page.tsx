@@ -64,7 +64,31 @@ export default function KapiRitueliPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#0A0A0A] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-screen mesh-bg flex items-center justify-center overflow-hidden px-4">
+      {/* Atmosfer — ambient orb'lar (Canlı/Derin felsefesi) */}
+      <div className="absolute top-0 left-1/2 w-[420px] h-[420px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(201,168,76,0.10) 0%, transparent 65%)', transform: 'translate(-50%,-35%)' }} />
+      <div className="absolute bottom-0 right-0 w-[360px] h-[360px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(139,26,42,0.12) 0%, transparent 70%)' }} />
+
+      {/* Marka kilidi — adım 1-2 (üstteki boşluğu doldurur + marka kimliği) */}
+      {adim < 3 && (
+        <motion.div
+          initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+          className="absolute top-[7vh] left-0 right-0 flex flex-col items-center gap-2 pointer-events-none z-10"
+        >
+          <h2 className="text-[#C9A84C] tracking-[0.26em] uppercase gold-shimmer"
+            style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 30, fontWeight: 700 }}>
+            Dokuz Beş
+          </h2>
+          <div className="flex items-center gap-2.5">
+            <span className="h-px w-8" style={{ background: 'linear-gradient(90deg,transparent,rgba(201,168,76,0.55))' }} />
+            <span className="text-[#A09080] tracking-[0.3em] uppercase" style={{ fontSize: 9 }}>Canlı Eğlence</span>
+            <span className="h-px w-8" style={{ background: 'linear-gradient(90deg,rgba(201,168,76,0.55),transparent)' }} />
+          </div>
+        </motion.div>
+      )}
+
       <AnimatePresence mode="wait">
         {adim === 1 && (
           <motion.div
@@ -81,7 +105,7 @@ export default function KapiRitueliPage() {
               <p className="db-kucuk text-[#A09080] mt-2">Sahne adınız — değiştirilebilir</p>
             </div>
 
-            <div className="bg-[#111111] rounded-[16px] border border-[rgba(201,168,76,0.2)] p-6 flex flex-col gap-4">
+            <div className="vip-card p-6 flex flex-col gap-4">
               <DBInput
                 label="Rumuz"
                 placeholder="Örn: Hasan, Ahmet..."
@@ -121,7 +145,7 @@ export default function KapiRitueliPage() {
               <p className="db-kucuk text-[#A09080] mt-2">Yakın yayıncıları öncelikli göstereceğiz</p>
             </div>
 
-            <div className="bg-[#111111] rounded-[16px] border border-[rgba(201,168,76,0.2)] p-6 flex flex-col gap-3">
+            <div className="vip-card p-6 flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-2">
                 {SEHIRLER.map((s) => (
                   <button
