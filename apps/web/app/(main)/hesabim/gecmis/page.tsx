@@ -13,21 +13,35 @@ type IslemTip = 'yukle' | 'odeme' | 'hediye' | 'kazanc'
 type Filtre   = 'tumu' | IslemTip
 
 interface Islem {
-  id: number; tip: IslemTip; aciklama: string; miktar: number; tarih: string
+  id: string; tip: IslemTip; aciklama: string; miktar: number; tarih: string
 }
 
-const MOCK_ISLEMLER: Islem[] = [
-  { id: 1,  tip: 'yukle',  aciklama: 'Gold Yükleme — VIP Paketi',        miktar:  1750,  tarih: '08.06.2026' },
-  { id: 2,  tip: 'odeme',  aciklama: 'Masa Ücreti — Leyla ile',           miktar:  -120,  tarih: '07.06.2026' },
-  { id: 3,  tip: 'hediye', aciklama: 'Elmas Yüzük → Ece Yıldız',          miktar:  -500,  tarih: '07.06.2026' },
-  { id: 4,  tip: 'kazanc', aciklama: 'Arkadaşını Davet Et Bonusu',        miktar:   180,  tarih: '06.06.2026' },
-  { id: 5,  tip: 'odeme',  aciklama: 'Masa Ücreti — Selin ile',           miktar:   -50,  tarih: '05.06.2026' },
-  { id: 6,  tip: 'yukle',  aciklama: 'Gold Yükleme — Premium Paketi',     miktar:   750,  tarih: '02.06.2026' },
-  { id: 7,  tip: 'hediye', aciklama: 'Gold Bilezik → Luna',                miktar:  -150,  tarih: '01.06.2026' },
-  { id: 8,  tip: 'kazanc', aciklama: 'İlk Giriş Bonusu',                  miktar:    50,  tarih: '28.05.2026' },
-  { id: 9,  tip: 'odeme',  aciklama: 'Masa Ücreti — Zeynep ile',          miktar:   -50,  tarih: '25.05.2026' },
-  { id: 10, tip: 'yukle',  aciklama: 'Gold Yükleme — Başlangıç Paketi',   miktar:   250,  tarih: '20.05.2026' },
-]
+// gold-service GET /gold/gecmis dönüşü
+interface GecmisDTO {
+  id: string; tur: string; miktar: number; aciklama: string | null; createdAt: string
+}
+
+const TUR_TIP: Record<string, IslemTip> = {
+  gold_satin_al: 'yukle',
+  harcama:       'odeme',
+  hediye_gonder: 'hediye',
+  iade:          'kazanc',
+  bonus:         'kazanc',
+}
+const TIP_VARSAYILAN: Record<IslemTip, string> = {
+  yukle: 'Gold yükleme', odeme: 'Masa ödemesi', hediye: 'Hediye', kazanc: 'Kazanç',
+}
+
+function mapIslem(d: GecmisDTO): Islem {
+  const tip = TUR_TIP[d.tur] ?? (d.miktar >= 0 ? 'kazanc' : 'odeme')
+  return {
+    id: d.id,
+    tip,
+    aciklama: d.aciklama?.trim() || TIP_VARSAYILAN[tip],
+    miktar: d.miktar,
+    tarih: new Date(d.createdAt).toLocaleDateString('tr-TR'),
+  }
+}
 
 const FILTRELER: { id: Filtre; label: string }[] = [
   { id: 'tumu',   label: 'Tümü'    },
@@ -49,14 +63,16 @@ export default function GecmisPage() {
   const [filtre, setFiltre] = useState<Filtre>('tumu')
   const [arama, setArama]   = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['gold-gecmis'],
-    queryFn: () => api.gold.get<{ islemler: Islem[] }>('/gold/islemler')
-      .catch(() => ({ islemler: MOCK_ISLEMLER })),
+    queryFn: async () => {
+      const res = await api.gold.get<{ islemler: GecmisDTO[] }>('/gold/gecmis')
+      return res.islemler.map(mapIslem)
+    },
     staleTime: 60_000,
   })
 
-  const islemler = (data?.islemler ?? MOCK_ISLEMLER)
+  const islemler = (data ?? [])
     .filter(i => filtre === 'tumu' || i.tip === filtre)
     .filter(i => !arama || i.aciklama.toLowerCase().includes(arama.toLowerCase()))
 
@@ -141,6 +157,16 @@ export default function GecmisPage() {
         {/* Liste */}
         {isLoading ? (
           <div className="flex justify-center py-12"><DBLoadingSpinner size={32} /></div>
+        ) : isError ? (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <Coins size={32} className="text-red-400/40" />
+            <p className="text-[#5A5050] text-sm">İşlem geçmişi yüklenemedi.</p>
+            <button onClick={() => refetch()}
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-[#C9A84C] transition-colors hover:bg-[rgba(201,168,76,0.18)]"
+              style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)' }}>
+              Tekrar dene
+            </button>
+          </div>
         ) : islemler.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
             <Coins size={32} className="text-white/10" />

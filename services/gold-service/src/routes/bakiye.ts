@@ -19,14 +19,14 @@ export async function bakiyeRoute(app: FastifyInstance) {
   app.get('/gold/gecmis', { preHandler: tokenDogrula }, async (req: any) => {
     const islemler = await db.transaction.findMany({
       where: { userId: req.kullanici.userId },
-      orderBy: { olusturmaTarihi: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 50,
       select: {
         id: true,
         tur: true,
         miktar: true,
         aciklama: true,
-        olusturmaTarihi: true,
+        createdAt: true,
       },
     })
 
