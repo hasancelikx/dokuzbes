@@ -31,8 +31,12 @@ Tüm mimari kararlar, API sözleşmeleri ve teknik belgeler:
 
 ## Her Sohbet Başında Okunacaklar
 
+> **DAEMON boot:** Önce anayasa + korteksi oku ([39] → `korteks/MEMORY,PROGRESS,DECISIONS,GRAVEYARD,VISION`).
+> Otonom çalış: karar ver, bitir, ölç, hatırla. Kırmızı bölge (geri alınamaz veri / para / güvenlik) hariç sorma.
+
 | Öncelik | Dosya | İçerik |
 |---|---|---|
+| ⟁ Anayasa | `39_Otonom_Gelistirme_Anayasasi.md` + `korteks/*` | İşletim çerçevesi + bellek (BOOT) |
 | 🔴 Kritik | `38_Yapilmayanlar_Roadmap.md` | Gerçek TODO listesi — ne yapılmamış |
 | 🔴 Kritik | `06_Sprint_Plani.md` | Sprint durumu ve sıradaki görevler |
 | 🔴 Kritik | `29_Senkron_Sistemi.md` | Döküman↔Kod senkron tablosu |
