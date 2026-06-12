@@ -8,40 +8,9 @@ import { useQuery } from '@tanstack/react-query'
 import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/apiClient'
+import { mapIslem, type IslemTip, type GecmisDTO } from '@/lib/goldIslem'
 
-type IslemTip = 'yukle' | 'odeme' | 'hediye' | 'kazanc'
-type Filtre   = 'tumu' | IslemTip
-
-interface Islem {
-  id: string; tip: IslemTip; aciklama: string; miktar: number; tarih: string
-}
-
-// gold-service GET /gold/gecmis dönüşü
-interface GecmisDTO {
-  id: string; tur: string; miktar: number; aciklama: string | null; createdAt: string
-}
-
-const TUR_TIP: Record<string, IslemTip> = {
-  gold_satin_al: 'yukle',
-  harcama:       'odeme',
-  hediye_gonder: 'hediye',
-  iade:          'kazanc',
-  bonus:         'kazanc',
-}
-const TIP_VARSAYILAN: Record<IslemTip, string> = {
-  yukle: 'Gold yükleme', odeme: 'Masa ödemesi', hediye: 'Hediye', kazanc: 'Kazanç',
-}
-
-function mapIslem(d: GecmisDTO): Islem {
-  const tip = TUR_TIP[d.tur] ?? (d.miktar >= 0 ? 'kazanc' : 'odeme')
-  return {
-    id: d.id,
-    tip,
-    aciklama: d.aciklama?.trim() || TIP_VARSAYILAN[tip],
-    miktar: d.miktar,
-    tarih: new Date(d.createdAt).toLocaleDateString('tr-TR'),
-  }
-}
+type Filtre = 'tumu' | IslemTip
 
 const FILTRELER: { id: Filtre; label: string }[] = [
   { id: 'tumu',   label: 'Tümü'    },

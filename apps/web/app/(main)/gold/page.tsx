@@ -9,6 +9,7 @@ import { DBButton } from '@/components/ui/DBButton'
 import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/apiClient'
+import { mapIslem, type GecmisDTO } from '@/lib/goldIslem'
 import { toast } from 'sonner'
 
 interface Paket {
@@ -20,27 +21,11 @@ interface Paket {
   populer?: boolean
 }
 
-interface Islem {
-  id: number
-  tip: 'yukle' | 'odeme' | 'hediye' | 'kazanc'
-  aciklama: string
-  miktar: number
-  tarih: string
-}
-
 const PAKETLER: Paket[] = [
   { id: 'starter', isim: 'BAŞLANGIÇ', miktar: 250,  bonus: 0,   fiyat: '₺659,99'    },
   { id: 'premium', isim: 'PREMIUM',   miktar: 750,  bonus: 20,  fiyat: '₺1.159,99'  },
   { id: 'vip',     isim: 'VIP',       miktar: 1750, bonus: 40,  fiyat: '₺2.329,99', populer: true },
   { id: 'elite',   isim: 'ELİTE',     miktar: 4000, bonus: 60,  fiyat: '₺4.699,99'  },
-]
-
-const MOCK_ISLEMLER: Islem[] = [
-  { id: 1, tip: 'yukle',  aciklama: 'Gold Yükleme — VIP Paketi',    miktar: 1750,  tarih: '16.05.2026' },
-  { id: 2, tip: 'odeme',  aciklama: 'Masa Ücreti — Leyla ile',      miktar: -120,  tarih: '15.05.2026' },
-  { id: 3, tip: 'hediye', aciklama: 'Diamond Ring → Ece Demir',     miktar: -500,  tarih: '15.05.2026' },
-  { id: 4, tip: 'kazanc', aciklama: 'Arkadaşını Davet Et Bonusu',   miktar: 180,   tarih: '14.05.2026' },
-  { id: 5, tip: 'odeme',  aciklama: 'Masa Ücreti — Selin ile',      miktar: -50,   tarih: '14.05.2026' },
 ]
 
 const ISLEM_IKON = {
@@ -73,7 +58,10 @@ export default function GoldPage() {
 
   const { data: islemler, isLoading: islemlerYukleniyor } = useQuery({
     queryKey: ['gold-islemler'],
-    queryFn: () => api.gold.get<{ islemler: Islem[] }>('/gold/islemler').catch(() => ({ islemler: MOCK_ISLEMLER })),
+    queryFn: async () => {
+      const res = await api.gold.get<{ islemler: GecmisDTO[] }>('/gold/gecmis')
+      return res.islemler.map(mapIslem)
+    },
     staleTime: 60_000,
   })
 
@@ -105,7 +93,7 @@ export default function GoldPage() {
     )
   }
 
-  const listeIslemler = islemler?.islemler ?? MOCK_ISLEMLER
+  const listeIslemler = (islemler ?? []).slice(0, 6)
 
   return (
     <div className="min-h-screen mesh-bg">
@@ -227,6 +215,8 @@ export default function GoldPage() {
               <div className="flex justify-center py-8">
                 <DBLoadingSpinner size={28} />
               </div>
+            ) : listeIslemler.length === 0 ? (
+              <p className="text-[13px] text-[#5A5050] text-center py-8">Henüz işlem yok</p>
             ) : (
               <AnimatePresence>
                 {listeIslemler.map((islem, idx) => {
