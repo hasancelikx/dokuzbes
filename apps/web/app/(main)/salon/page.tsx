@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth'
 import type { Yayinci } from '@/types/yayinci'
 import { PA } from '@/lib/mockAvatars'
 import { UcusanParcaciklar } from '@/components/ui/UcusanParcaciklar'
+import { SampanyaPatlamasi } from '@/components/ui/SampanyaPatlamasi'
 
 const MOCK: Yayinci[] = [
   { id: 'mock-1', displayName: 'Leyla',      avatarUrl: PA['Leyla'],      city: 'İstanbul', durum: 'musait', aktifIzleyici: 0,  toplamGorusme: 342,  toplamHediye: 1290, puan: 4.8, vipSeviye: 2, etiketler: ['sohbet', 'müzik']         },
@@ -86,6 +87,10 @@ export default function SalonPage() {
 
       {/* Ambient hareket — havada süzülen altın yapraklar (tıklamayı geçirir) */}
       <UcusanParcaciklar adet={20} className="z-20" />
+
+      {/* Şampanya patlaması — belli aralıklarla sağ üstten tüm sayfaya yağar */}
+      <SampanyaPatlamasi aralikSn={32} />
+
 
       {/* ── Üst header — saydam, kartların üzerinde ── */}
       <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none"
