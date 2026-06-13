@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Home, User, MessageSquare, Crown, Compass, Bell, Trophy } from 'lucide-react'
 import { DBGoldBadge } from '@/components/ui/DBGoldBadge'
 import { DBAvatar } from '@/components/ui/DBAvatar'
@@ -169,18 +169,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* Merkez içerik — page-safe-pad safe area'yı otomatik yönetir */}
       <main className="flex-1 min-w-0 overflow-x-hidden md:ml-[275px] xl:mr-[350px] page-safe-pad md:pb-0"
         style={{ borderRight: '1px solid rgba(201,168,76,0.06)' }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={pathname}
-            className="w-full"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        {/* Sayfalar arası geçiş animasyonu kaldırıldı — anlık, snappy navigasyon */}
+        <div className="w-full">{children}</div>
       </main>
 
       {/* Sağ Sidebar */}
