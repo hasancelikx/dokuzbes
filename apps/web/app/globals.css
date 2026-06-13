@@ -461,6 +461,14 @@ body::after {
 }
 .neon-gold { animation: neonPulse 2.5s ease-in-out infinite; }
 
+/* Uçuşan altın yaprak/toz — ambient hareket (lüks atmosfer) */
+@keyframes parcacikYuksel {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  12%  { opacity: var(--p-op, 0.4); }
+  88%  { opacity: var(--p-op, 0.4); }
+  100% { transform: translate3d(var(--p-sway, 24px), -105vh, 0) rotate(240deg); opacity: 0; }
+}
+
 /* ══════════════════════════════════════════════════
    VIP PREMIUM LAYER
    ══════════════════════════════════════════════════ */
