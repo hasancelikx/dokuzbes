@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   LiveKitRoom,
@@ -15,8 +15,13 @@ import { useAuthStore } from '@/store/authStore'
 import {
   Mic, MicOff, Video, VideoOff, PhoneOff,
   Send, Gift, ChevronDown, Coins, Clock,
+  ArrowLeft, XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+
+type MasaAsamasi = 'yukleniyor' | 'bekliyor' | 'aktif' | 'reddedildi' | 'hata'
+
+const BEKLEME_SURE = 300 // saniye — mesa-service timeout ile senkron
 
 /* ─── Tipler ─────────────────────────────────────── */
 interface MasaToken {
@@ -31,6 +36,7 @@ interface ChatMesaj {
 interface HediyeItem { id: string; isim: string; ikon: string; goldMaliyet: number }
 
 const CHAT_WS = process.env.NEXT_PUBLIC_CHAT_URL ?? 'ws://localhost:3005'
+const CHAT_HTTP = CHAT_WS.replace(/^ws/, 'http') // ws://→http://, wss://→https://
 
 /* ─── Hediye Drawer ──────────────────────────────── */
 function HediyeDrawer({
@@ -40,7 +46,7 @@ function HediyeDrawer({
   const [gonderiliyor, setGonderiliyor] = useState<string | null>(null)
 
   useEffect(() => {
-    api.gold.get<{ hediyeler: HediyeItem[] }>('/gold/hediye-katalog')
+    api.gold.get<{ hediyeler: HediyeItem[] }>('/gold/hediyeler')
       .then(d => setHediyeler(d.hediyeler))
       .catch(() => {})
   }, [])
@@ -103,8 +109,7 @@ function ChatPanel({
 
   // Geçmişi yükle
   useEffect(() => {
-    api.notif.get  // reuse apiFetch pattern
-    fetch(`http://localhost:3005/chat/gecmis/${masaId}`, { credentials: 'include' })
+    fetch(`${CHAT_HTTP}/chat/gecmis/${masaId}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => { if (d.mesajlar) setMesajlar(d.mesajlar) })
       .catch(() => {})
@@ -260,21 +265,147 @@ function KontrolCubugu({
   )
 }
 
+/* ─── Bekleme Ekranı ─────────────────────────────── */
+function BeklemeSayfasi({
+  performerAdi, tur, geriSayim, onIptal,
+}: { performerAdi: string; tur: string; geriSayim: number; onIptal: () => void }) {
+  const dk = String(Math.floor(geriSayim / 60)).padStart(2, '0')
+  const sn = String(geriSayim % 60).padStart(2, '0')
+  const ilerleme = (geriSayim / BEKLEME_SURE) * 100
+
+  return (
+    <div className="min-h-screen bg-[#080810] flex flex-col items-center justify-center gap-6 px-4">
+      <div className="relative w-24 h-24">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#1a1a28" strokeWidth="6" />
+          <circle
+            cx="50" cy="50" r="44" fill="none"
+            stroke="#C9A84C" strokeWidth="6"
+            strokeDasharray={`${2 * Math.PI * 44}`}
+            strokeDashoffset={`${2 * Math.PI * 44 * (1 - ilerleme / 100)}`}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dashoffset 0.9s linear' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-mono text-[#C9A84C] font-bold text-lg">{dk}:{sn}</span>
+        </div>
+      </div>
+
+      <div className="text-center space-y-2">
+        <p className="text-[#F0EDE8] text-lg font-semibold">{performerAdi} kabulünü bekliyor...</p>
+        <p className="text-[#5A5050] text-sm">
+          {tur === 'kisa' ? '5 dk' : tur === 'uzun' ? '15 dk' : '30 dk'} masa isteğiniz gönderildi
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1a1a28] border border-[rgba(201,168,76,0.15)]">
+        <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
+        <span className="text-[#A09080] text-xs">Yanıt bekleniyor...</span>
+      </div>
+
+      <button
+        onClick={onIptal}
+        className="flex items-center gap-2 text-[#5A5050] text-sm hover:text-[#A09080] transition-colors mt-2"
+      >
+        <ArrowLeft size={14} />
+        Vazgeç ve geri dön
+      </button>
+    </div>
+  )
+}
+
+/* ─── Red / Timeout Ekranı ───────────────────────── */
+function ReddedildiEkrani({
+  performerAdi, sebep, goldIade, onGeri,
+}: { performerAdi: string; sebep: 'red' | 'timeout'; goldIade?: number; onGeri: () => void }) {
+  return (
+    <div className="min-h-screen bg-[#080810] flex flex-col items-center justify-center gap-6 px-4">
+      <div className="w-16 h-16 rounded-full bg-[rgba(139,26,42,0.15)] border border-[rgba(139,26,42,0.35)] flex items-center justify-center">
+        <XCircle size={28} className="text-red-400" />
+      </div>
+      <div className="text-center space-y-2">
+        <p className="text-[#F0EDE8] text-lg font-semibold">
+          {sebep === 'red' ? 'Masa reddedildi' : 'Zaman doldu'}
+        </p>
+        <p className="text-[#5A5050] text-sm">
+          {sebep === 'red'
+            ? `${performerAdi} şu an müsait değil.`
+            : `${performerAdi} zamanında yanıt vermedi.`}
+        </p>
+        {goldIade != null && goldIade > 0 && (
+          <p className="text-[#C9A84C] text-sm font-medium">{goldIade} gold bakiyenize iade edildi.</p>
+        )}
+      </div>
+      <button
+        onClick={onGeri}
+        className="px-6 py-3 bg-[rgba(201,168,76,0.12)] border border-[rgba(201,168,76,0.3)] text-[#C9A84C] rounded-xl hover:bg-[rgba(201,168,76,0.2)] transition-colors text-sm font-medium"
+      >
+        Salona Dön
+      </button>
+    </div>
+  )
+}
+
 /* ─── Ana Sayfa ──────────────────────────────────── */
 export default function MasaSayfasi() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { kullanici } = useAuthStore()
   const [masaToken, setMasaToken] = useState<MasaToken | null>(null)
+  const [asama, setAsama] = useState<MasaAsamasi>('yukleniyor')
+  const [redSebep, setRedSebep] = useState<'red' | 'timeout'>('red')
   const [hata, setHata] = useState<string | null>(null)
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hediyeAcik, setHediyeAcik] = useState(false)
   const [mobilSohbet, setMobilSohbet] = useState(false)
   const [sure, setSure] = useState('00:00')
+  const [geriSayim, setGeriSayim] = useState(BEKLEME_SURE)
   const baslangicRef = useRef<Date | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
 
-  // Sayaç
+  // Masa durumu poll et — yalnızca 'bekliyor' aşamasında
+  const durumKontrol = useCallback(async () => {
+    try {
+      const mesa = await api.mesa.get<{ durum: string }>(`/mesa/${id}`)
+      if (mesa.durum === 'aktif') {
+        setAsama('aktif')
+        // WebSocket bağlan
+        const socket = new WebSocket(`${CHAT_WS}/chat`)
+        socket.onopen = () => { setWs(socket); wsRef.current = socket }
+        socket.onerror = () => {}
+      } else if (mesa.durum === 'iptal' || mesa.durum === 'kapali') {
+        setRedSebep('red')
+        setAsama('reddedildi')
+      }
+    } catch { /* sessiz — sonraki iterasyonda tekrar dener */ }
+  }, [id])
+
   useEffect(() => {
+    if (asama !== 'bekliyor') return
+    const t = setInterval(durumKontrol, 4000)
+    return () => clearInterval(t)
+  }, [asama, durumKontrol])
+
+  // Geri sayım — yalnızca 'bekliyor' aşamasında
+  useEffect(() => {
+    if (asama !== 'bekliyor') return
+    const t = setInterval(() => {
+      setGeriSayim(p => {
+        if (p <= 1) {
+          setRedSebep('timeout')
+          setAsama('reddedildi')
+          return 0
+        }
+        return p - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [asama])
+
+  // Aktif masa sayacı
+  useEffect(() => {
+    if (asama !== 'aktif') return
     baslangicRef.current = new Date()
     const t = setInterval(() => {
       if (!baslangicRef.current) return
@@ -284,7 +415,7 @@ export default function MasaSayfasi() {
       setSure(`${dk}:${sn}`)
     }, 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [asama])
 
   // Token al
   useEffect(() => {
@@ -292,30 +423,52 @@ export default function MasaSayfasi() {
     api.livekit.post<MasaToken>('/livekit/token', { masaId: id, goruntulu: true, sesli: true })
       .then(t => {
         setMasaToken(t)
-        // WebSocket bağlan
-        const socket = new WebSocket(`${CHAT_WS}/chat`)
-        socket.onopen = () => setWs(socket)
-        socket.onerror = () => {}
+        if (t.masa.durum === 'aktif') {
+          // Doğrudan LiveKit'e bağlan
+          const socket = new WebSocket(`${CHAT_WS}/chat`)
+          socket.onopen = () => { setWs(socket); wsRef.current = socket }
+          socket.onerror = () => {}
+          setAsama('aktif')
+        } else {
+          // 'waiting' → bekleme ekranı, poll başlar
+          setAsama('bekliyor')
+        }
       })
       .catch(e => {
         if (e instanceof ApiError && e.status === 410) setHata('Bu masa kapanmış.')
         else if (e instanceof ApiError && e.status === 403) setHata('Bu masaya erişim yetkiniz yok.')
         else setHata('Bağlantı kurulamadı.')
+        setAsama('hata')
       })
-    return () => { ws?.close() }
+    return () => { wsRef.current?.close() }
   }, [id, kullanici]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function masayiKapat() {
-    ws?.close()
+    wsRef.current?.close()
     try { await api.mesa.post(`/mesa/${id}/kapat`) } catch {}
     router.back()
   }
 
-  /* ── Hata / Yükleme ── */
-  if (hata) return (
+  async function vazgec() {
+    try { await api.mesa.post(`/mesa/${id}/red`) } catch {}
+    router.back()
+  }
+
+  /* ── Yükleniyor ── */
+  if (asama === 'yukleniyor') return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <div className="text-center space-y-4">
-        <p className="text-red-400">{hata}</p>
+        <div className="w-14 h-14 rounded-full border-[3px] border-[#C9A84C] border-t-transparent animate-spin mx-auto" />
+        <p className="text-gray-500 text-sm">Bağlantı kuruluyor...</p>
+      </div>
+    </div>
+  )
+
+  /* ── Hata ── */
+  if (asama === 'hata' || hata) return (
+    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <p className="text-red-400">{hata ?? 'Bir hata oluştu.'}</p>
         <button onClick={() => router.back()}
           className="px-6 py-3 bg-white/10 rounded-xl text-white hover:bg-white/15 transition-colors">
           Geri Dön
@@ -324,14 +477,27 @@ export default function MasaSayfasi() {
     </div>
   )
 
-  if (!masaToken) return (
-    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="w-14 h-14 rounded-full border-[3px] border-[#C9A84C] border-t-transparent animate-spin mx-auto" />
-        <p className="text-gray-500 text-sm">Bağlantı kuruluyor...</p>
-      </div>
-    </div>
+  /* ── Bekleme ── */
+  if (asama === 'bekliyor' && masaToken) return (
+    <BeklemeSayfasi
+      performerAdi={masaToken.masa.performerAdi}
+      tur={masaToken.masa.tur}
+      geriSayim={geriSayim}
+      onIptal={vazgec}
+    />
   )
+
+  /* ── Reddedildi / Timeout ── */
+  if (asama === 'reddedildi' && masaToken) return (
+    <ReddedildiEkrani
+      performerAdi={masaToken.masa.performerAdi}
+      sebep={redSebep}
+      goldIade={undefined}
+      onGeri={() => router.push('/salon')}
+    />
+  )
+
+  if (!masaToken) return null
 
   const karsiTaraf = masaToken.rol === 'musteri'
     ? masaToken.masa.performerAdi
