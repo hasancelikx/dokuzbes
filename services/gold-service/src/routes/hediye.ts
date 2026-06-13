@@ -76,6 +76,8 @@ export async function hediyeRoute(app: FastifyInstance) {
       hediyeIsim: sonuc.hediye.isim,
       hediyeIkon: sonuc.hediye.ikon,
       animasyon: sonuc.hediye.animasyon,
+      hediyeKategori: sonuc.hediye.kategori,
+      hediyeGold: sonuc.hediye.goldMaliyet,
       gondericiId: req.kullanici.userId,
     }))
 

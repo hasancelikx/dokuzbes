@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import type { HediyeDetay } from '@/lib/kutlama'
 
 export type HediyeKategori = 'temel' | 'orta' | 'premium' | 'luks'
 
@@ -164,4 +165,35 @@ export function useHediyeAnimasyon() {
   const element = aktif ? <DBHediyeAnimasyon {...aktif} /> : null
 
   return { goster, element }
+}
+
+const GECERLI_KATEGORI: HediyeKategori[] = ['temel', 'orta', 'premium', 'luks']
+function normalizeKategori(k?: string | null): HediyeKategori {
+  return (GECERLI_KATEGORI as string[]).includes(k ?? '') ? (k as HediyeKategori) : 'orta'
+}
+
+/**
+ * Olay-tetikli hediye animasyonu katmanı — `hediyePatlat()` çağrısında oynatır.
+ * (main) layout'a monteli; her yerden tetiklenebilir. Kategori savunmacı normalize
+ * edilir (bilinmeyen değer → 'orta'), bu yüzden bozuk veriyle çökmez.
+ */
+export function HediyeKatmani() {
+  const [aktif, setAktif] = useState<DBHediyeAnimasyonProps | null>(null)
+  useEffect(() => {
+    function dinle(e: Event) {
+      const d = (e as CustomEvent<HediyeDetay>).detail
+      if (!d) return
+      setAktif({
+        emoji: d.emoji || '🎁',
+        isim: d.isim || 'Hediye',
+        kategori: normalizeKategori(d.kategori),
+        goldMaliyet: d.gold ?? 0,
+        gondericIsim: d.gonderen || '',
+        onBitti: () => setAktif(null),
+      })
+    }
+    window.addEventListener('db:hediye', dinle)
+    return () => window.removeEventListener('db:hediye', dinle)
+  }, [])
+  return aktif ? <DBHediyeAnimasyon {...aktif} /> : null
 }
