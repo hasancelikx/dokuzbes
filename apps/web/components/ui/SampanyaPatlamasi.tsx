@@ -29,7 +29,22 @@ export function SampanyaPatlamasi({ aralikSn = 32, damla = 44, ilkGecikmeSn = 4 
   return <Patlama key={tur} damla={damla} />
 }
 
-function Patlama({ damla }: { damla: number }) {
+/**
+ * Olay-tetikli kutlama katmanı — `kutlamaPatlat()` çağrısında bir patlama oynatır.
+ * Anlamlı anlar için (örn. hediye gönderildi/geldi). Layout veya sayfaya monte edilir.
+ */
+export function KutlamaKatmani({ damla = 50 }: { damla?: number }) {
+  const [tur, setTur] = useState(0)
+  useEffect(() => {
+    const tetik = () => setTur((t) => t + 1)
+    window.addEventListener('db:kutlama', tetik)
+    return () => window.removeEventListener('db:kutlama', tetik)
+  }, [])
+  if (tur === 0) return null
+  return <Patlama key={tur} damla={damla} />
+}
+
+export function Patlama({ damla }: { damla: number }) {
   const damlalar = useMemo(
     () =>
       Array.from({ length: damla }, (_, i) => ({

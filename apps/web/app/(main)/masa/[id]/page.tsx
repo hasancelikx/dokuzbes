@@ -18,6 +18,7 @@ import {
   ArrowLeft, XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { kutlamaPatlat } from '@/lib/kutlama'
 
 type MasaAsamasi = 'yukleniyor' | 'bekliyor' | 'aktif' | 'reddedildi' | 'hata'
 
@@ -123,6 +124,9 @@ function ChatPanel({
         const data = JSON.parse(e.data)
         if (data.tip === 'mesaj') {
           setMesajlar(prev => [...prev, data.mesaj])
+        } else if (data.tip === 'hediye') {
+          kutlamaPatlat()
+          toast(`${data.hediyeIkon ?? '🎁'} ${data.hediyeIsim ?? 'Hediye'} geldi!`)
         }
       } catch {}
     }

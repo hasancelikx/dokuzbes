@@ -11,6 +11,7 @@ import { DBLoadingSpinner } from '@/components/ui/DBLoadingSpinner'
 import { RightSidebar } from '@/components/layout/RightSidebar'
 import { Logo } from '@/components/layout/Logo'
 import { BildirimZili } from '@/components/ui/BildirimZili'
+import { KutlamaKatmani } from '@/components/ui/SampanyaPatlamasi'
 import { useBildirimler } from '@/hooks/useBildirimler'
 
 interface NavItem {
@@ -52,6 +53,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="min-h-screen mesh-bg flex">
+
+      {/* Kutlama katmanı — anlamlı anlarda (hediye) şampanya patlaması */}
+      <KutlamaKatmani />
 
       {/* ── Sol Sidebar ── */}
       <aside
