@@ -333,14 +333,7 @@ body::after {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* ── Mesh gradient background ──────────────────────── */
-.mesh-bg {
-  background-color: #050508;
-  background-image:
-    radial-gradient(ellipse 80% 60% at 10% 40%, rgba(201,168,76,0.055) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 55% at 90% 10%, rgba(139,26,42,0.09)  0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 55% 95%, rgba(50,15,80,0.06)   0%, transparent 50%);
-}
+/* mesh-bg tek tanım: aşağıdaki "Güçlendirilmiş mesh arka plan" (mükerrer ölü kopya kaldırıldı) */
 
 /* ── Performer card glow rings ─────────────────────── */
 @keyframes liveCardGlow {
