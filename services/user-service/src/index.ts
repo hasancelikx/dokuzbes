@@ -6,6 +6,7 @@ import { profileRoutes } from './routes/profile'
 import { avatarRoutes } from './routes/avatar'
 import { nicknameCheckRoute } from './routes/nicknameCheck'
 import { musteriSiramaRoutes } from './routes/siralama'
+import { takipRoutes } from './routes/takip'
 import { AppError } from '@dokuzbes/errors'
 import { db } from './lib/db'
 
@@ -22,6 +23,7 @@ app.register(profileRoutes)
 app.register(avatarRoutes)
 app.register(nicknameCheckRoute)
 app.register(musteriSiramaRoutes)
+app.register(takipRoutes)
 
 app.setErrorHandler((error, _req, reply) => {
   if (error instanceof AppError) {

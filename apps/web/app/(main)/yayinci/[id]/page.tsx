@@ -75,19 +75,31 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
   const router = useRouter()
   const [aktifSekme, setAktifSekme] = useState<Sekme>('hakkinda')
   const [takipEdiliyor, setTakipEdiliyor] = useState(false)
-  const [takipSayisi, setTakipSayisi] = useState(128)
+  const [takipSayisi, setTakipSayisi] = useState(0)
   const [haberVerilsin, setHaberVerilsin] = useState(false)
   const [konfeti, setKonfeti] = useState(false)
   const [secilenMasa, setSecilenMasa] = useState<string | null>(null)
   const [hatirlatSet, setHatirlatSet] = useState<string | null>(null)
   const [masaYukleniyor, setMasaYukleniyor] = useState(false)
 
+  // Gerçek takip durumu + sayısını yükle
+  useEffect(() => {
+    if (!id) return
+    api.user.get<{ takipEdiliyor: boolean; takipSayisi: number }>(`/takip/${id}/durum`)
+      .then(d => { setTakipEdiliyor(d.takipEdiliyor); setTakipSayisi(d.takipSayisi) })
+      .catch(() => {})
+  }, [id])
+
   async function handleTakip() {
     const yeni = !takipEdiliyor
     setTakipEdiliyor(yeni)
     setTakipSayisi(p => yeni ? p + 1 : p - 1)
     try {
-      await api.user[yeni ? 'post' : 'delete'](`/takip/${id}`)
+      const d = yeni
+        ? await api.user.post<{ takipEdiliyor: boolean; takipSayisi: number }>(`/takip/${id}`)
+        : await api.user.delete<{ takipEdiliyor: boolean; takipSayisi: number }>(`/takip/${id}`)
+      setTakipEdiliyor(d.takipEdiliyor)
+      setTakipSayisi(d.takipSayisi)
     } catch {
       setTakipEdiliyor(!yeni)
       setTakipSayisi(p => yeni ? p - 1 : p + 1)

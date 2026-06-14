@@ -38,6 +38,7 @@ model User {
   sikayetEden         Sikayet[]           @relation("SikayetEden")
   sikayetEdilen       Sikayet[]           @relation("SikayetEdilen")
   bildirimler         Bildirim[]
+  takipler            Takip[]
 
   @@map("users")
 }
@@ -63,10 +64,25 @@ model Performer {
   gorusmeler        Gorusme[]           @relation("GorusmeYayinci")
   hediyeAlimlar     HediyeGonderimi[]   @relation("HediyeAlici")
   cekimTalepleri    CekimTalebi[]
+  takipciler        Takip[]
 
   @@index([durum])
   @@index([puan(sort: Desc)])
   @@map("performers")
+}
+
+model Takip {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  takipciId   String   @map("takipci_id") @db.Uuid
+  performerId String   @map("performer_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  takipci   User      @relation(fields: [takipciId], references: [id], onDelete: Cascade)
+  performer Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@unique([takipciId, performerId])
+  @@index([performerId])
+  @@map("takipler")
 }
 
 model PerformerApplication {
