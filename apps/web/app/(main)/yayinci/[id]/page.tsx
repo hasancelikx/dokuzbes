@@ -107,8 +107,10 @@ export default function YayinciProfil({ params }: { params: Promise<{ id: string
     }
   }
 
+  // Hediye yalnızca aktif masada gönderilebilir (backend masaId + aktif masa ister).
+  // Profilde sahte "gönderildi" göstermek yerine masaya yönlendir.
   function handleHediyeGonder(isim: string, gold: number) {
-    toast.success(`${isim} hediyesi gönderildi! −${gold} 🪙`)
+    toast.info(`${isim} (${gold} 🪙) göndermek için yayıncıyla masaya katıl.`)
   }
 
   function handleHaberVer() {
